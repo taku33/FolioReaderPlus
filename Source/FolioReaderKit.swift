@@ -24,6 +24,8 @@ internal let isLargePhone = isPhone6P
 internal let kApplicationDocumentsDirectory = NSSearchPathForDirectoriesInDomains(.DocumentDirectory, .UserDomainMask, true)[0] 
 internal let kCurrentFontFamily = "kCurrentFontFamily"
 internal let kCurrentFontSize = "kCurrentFontSize"
+internal let kCurrentLineHeight = "kCurrentLineHeight"
+internal let kCurrentBrowseMode = "kCurrentBrowseMode"
 internal let kCurrentAudioRate = "kCurrentAudioRate"
 internal let kCurrentHighlightStyle = "kCurrentHighlightStyle"
 internal var kCurrentMediaOverlayStyle = "kMediaOverlayStyle"
@@ -54,10 +56,13 @@ enum MediaOverlayStyle: Int {
 *  Main Library class with some useful constants and methods
 */
 public class FolioReader {
-    private init() {}
+    private init() {
     
-    static let sharedInstance = FolioReader()
-    static let defaults = NSUserDefaults.standardUserDefaults()
+        print("ライブラリを自分流に書き換え")
+    }
+    
+    static let sharedInstance = FolioReader() //シングルトンパターン
+    static let defaults = NSUserDefaults.standardUserDefaults()//シングルトンパターン
     var readerCenter: FolioReaderCenter!
     var readerSidePanel: FolioReaderSidePanel!
     var readerContainer: FolioReaderContainer!
@@ -84,6 +89,22 @@ public class FolioReader {
         get { return FolioReader.defaults.valueForKey(kCurrentFontSize) as! Int }
         set (value) {
             FolioReader.defaults.setValue(value, forKey: kCurrentFontSize)
+            FolioReader.defaults.synchronize()
+        }
+    }
+    
+    var currentLineHeight: Int {
+        get { return FolioReader.defaults.valueForKey(kCurrentLineHeight) as! Int }
+        set (value) {
+            FolioReader.defaults.setValue(value, forKey: kCurrentLineHeight)
+            FolioReader.defaults.synchronize()
+        }
+    }
+    
+    var currentBrowseMode: Int {
+        get { return FolioReader.defaults.valueForKey(kCurrentBrowseMode) as! Int }
+        set (value) {
+            FolioReader.defaults.setValue(value, forKey: kCurrentBrowseMode)
             FolioReader.defaults.synchronize()
         }
     }
@@ -312,12 +333,14 @@ extension String {
     /// appends optional trailing string if longer
     func truncate(length: Int, trailing: String? = nil) -> String {
         if self.characters.count > length {
+            //??という演算子を使うと、オプショナル型がnilでなければその値を、nilの場合は指定した値を与える
             return self.substringToIndex(self.startIndex.advancedBy(length)) + (trailing ?? "")
         } else {
             return self
         }
     }
     
+    //html的な文字を剥ぐ
     func stripHtml() -> String {
         return self.stringByReplacingOccurrencesOfString("<[^>]+>", withString: "", options: .RegularExpressionSearch)
     }
@@ -460,7 +483,7 @@ extension UIViewController: UIGestureRecognizerDelegate {
     func dismiss() {
         self.dismissViewControllerAnimated(true, completion: nil)
     }
-    
+   
     // MARK: - NavigationBar
     
     func setTransparentNavigation() {

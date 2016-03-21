@@ -25,7 +25,7 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         view.addGestureRecognizer(tapGesture)
         
         // Menu view
-        menuView = UIView(frame: CGRectMake(0, view.frame.height-170, view.frame.width, view.frame.height))
+        menuView = UIView(frame: CGRectMake(0, view.frame.height-170-56-56, view.frame.width, view.frame.height))
         menuView.backgroundColor = isNight(readerConfig.nightModeMenuBackground, UIColor.whiteColor())
         menuView.autoresizingMask = .FlexibleWidth
         menuView.layer.shadowColor = UIColor.blackColor().CGColor
@@ -43,11 +43,15 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         let moon = UIImage(readerImageNamed: "icon-moon")
         let fontSmall = UIImage(readerImageNamed: "icon-font-small")
         let fontBig = UIImage(readerImageNamed: "icon-font-big")
+        let lineHeightSmall = UIImage(readerImageNamed: "icon-lineHeight-small")
+        let lineHeightBig = UIImage(readerImageNamed: "icon-lineHeight-big")
         
         let sunNormal = sun!.imageTintColor(normalColor).imageWithRenderingMode(.AlwaysOriginal)
         let moonNormal = moon!.imageTintColor(normalColor).imageWithRenderingMode(.AlwaysOriginal)
         let fontSmallNormal = fontSmall!.imageTintColor(normalColor).imageWithRenderingMode(.AlwaysOriginal)
         let fontBigNormal = fontBig!.imageTintColor(normalColor).imageWithRenderingMode(.AlwaysOriginal)
+        let lineHeightSmallNormal = lineHeightSmall!.imageTintColor(normalColor).imageWithRenderingMode(.AlwaysOriginal)
+        let lineHeightBigNormal = lineHeightBig!.imageTintColor(normalColor).imageWithRenderingMode(.AlwaysOriginal)
         
         let sunSelected = sun!.imageTintColor(selectedColor).imageWithRenderingMode(.AlwaysOriginal)
         let moonSelected = moon!.imageTintColor(selectedColor).imageWithRenderingMode(.AlwaysOriginal)
@@ -107,29 +111,29 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         menuView.addSubview(line2)
         
         // Font slider size
-        let slider = HADiscreteSlider(frame: CGRect(x: 60, y: line2.frame.origin.y+2, width: view.frame.width-120, height: 55))
-        slider.tickStyle = ComponentStyle.Rounded
-        slider.tickCount = 5
-        slider.tickSize = CGSize(width: 8, height: 8)
+        let fontSlider = HADiscreteSlider(frame: CGRect(x: 60, y: line2.frame.origin.y+2, width: view.frame.width-120, height: 55))
+        fontSlider.tickStyle = ComponentStyle.Rounded
+        fontSlider.tickCount = 5
+        fontSlider.tickSize = CGSize(width: 8, height: 8)
         
-        slider.thumbStyle = ComponentStyle.Rounded
-        slider.thumbSize = CGSize(width: 28, height: 28)
-        slider.thumbShadowOffset = CGSize(width: 0, height: 2)
-        slider.thumbShadowRadius = 3
-        slider.thumbColor = selectedColor
+        fontSlider.thumbStyle = ComponentStyle.Rounded
+        fontSlider.thumbSize = CGSize(width: 28, height: 28)
+        fontSlider.thumbShadowOffset = CGSize(width: 0, height: 2)
+        fontSlider.thumbShadowRadius = 3
+        fontSlider.thumbColor = selectedColor
         
-        slider.backgroundColor = UIColor.clearColor()
-        slider.tintColor = readerConfig.nightModeSeparatorColor
-        slider.minimumValue = 0
-        slider.value = CGFloat(FolioReader.sharedInstance.currentFontSize)
-        slider.addTarget(self, action: "sliderValueChanged:", forControlEvents: UIControlEvents.ValueChanged)
+        fontSlider.backgroundColor = UIColor.clearColor()
+        fontSlider.tintColor = readerConfig.nightModeSeparatorColor
+        fontSlider.minimumValue = 0
+        fontSlider.value = CGFloat(FolioReader.sharedInstance.currentFontSize)
+        fontSlider.addTarget(self, action: "fontSliderValueChanged:", forControlEvents: UIControlEvents.ValueChanged)
         
         // Force remove fill color
-        for layer in slider.layer.sublayers! {
+        for layer in fontSlider.layer.sublayers! {
             layer.backgroundColor = UIColor.clearColor().CGColor
         }
         
-        menuView.addSubview(slider)
+        menuView.addSubview(fontSlider)
         
         // Font icons
         let fontSmallView = UIImageView(frame: CGRect(x: 20, y: line2.frame.origin.y+14, width: 30, height: 30))
@@ -142,11 +146,75 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         fontBigView.contentMode = UIViewContentMode.Center
         menuView.addSubview(fontBigView)
         
-//        // Separator 3
-//        let line3 = UIView(frame: CGRectMake(0, line2.frame.origin.y+56, view.frame.width, 1))
-//        line3.backgroundColor = readerConfig.nightModeSeparatorColor
-//        menuView.addSubview(line3)
+        // Separator 3
+        let line3 = UIView(frame: CGRectMake(0, line2.frame.origin.y+56, view.frame.width, 1))
+        line3.backgroundColor = readerConfig.nightModeSeparatorColor
+        menuView.addSubview(line3)
         
+        // LineHeight slider size
+        let lineSlider = HADiscreteSlider(frame: CGRect(x: 60, y: line3.frame.origin.y+2, width: view.frame.width-120, height: 55))
+        lineSlider.tickStyle = ComponentStyle.Rounded
+        lineSlider.tickCount = 5
+        lineSlider.tickSize = CGSize(width: 8, height: 8)
+        
+        lineSlider.thumbStyle = ComponentStyle.Rounded
+        lineSlider.thumbSize = CGSize(width: 28, height: 28)
+        lineSlider.thumbShadowOffset = CGSize(width: 0, height: 2)
+        lineSlider.thumbShadowRadius = 3
+        lineSlider.thumbColor = selectedColor
+        
+        lineSlider.backgroundColor = UIColor.clearColor()
+        lineSlider.tintColor = readerConfig.nightModeSeparatorColor
+        lineSlider.minimumValue = 0
+        lineSlider.value = CGFloat(FolioReader.sharedInstance.currentLineHeight)
+        lineSlider.addTarget(self, action: "lineHeightSliderValueChanged:", forControlEvents: UIControlEvents.ValueChanged)
+        
+        // Force remove fill color
+        for layer in lineSlider.layer.sublayers! {
+            layer.backgroundColor = UIColor.clearColor().CGColor
+        }
+        
+        menuView.addSubview(lineSlider)
+        
+        // LineHeight icons
+        let lineHeightSmallView = UIImageView(frame: CGRect(x: 20, y: line3.frame.origin.y+14, width: 30, height: 30))
+        lineHeightSmallView.image = lineHeightSmallNormal
+        lineHeightSmallView.contentMode = UIViewContentMode.Center
+        menuView.addSubview(lineHeightSmallView)
+        
+        let lineHeightBigView = UIImageView(frame: CGRect(x: view.frame.width-50, y: line3.frame.origin.y+14, width: 30, height: 30))
+        lineHeightBigView.image = lineHeightBigNormal
+        lineHeightBigView.contentMode = UIViewContentMode.Center
+        menuView.addSubview(lineHeightBigView)
+        
+        // Separator 4
+        let line4 = UIView(frame: CGRectMake(0, line3.frame.origin.y+56, view.frame.width, 1))
+        line4.backgroundColor = readerConfig.nightModeSeparatorColor
+        menuView.addSubview(line4)
+        
+        // Browse mode
+        let browseMode = SMSegmentView(frame: CGRect(x: 15, y: line4.frame.height+line4.frame.origin.y, width: view.frame.width-30, height: 55),
+            separatorColour: UIColor.clearColor(),
+            separatorWidth: 0,
+            segmentProperties:  [
+                keySegmentOnSelectionColour: UIColor.clearColor(),
+                keySegmentOffSelectionColour: UIColor.clearColor(),
+                keySegmentOnSelectionTextColour: selectedColor,
+                keySegmentOffSelectionTextColour: normalColor,
+                keyContentVerticalMargin: 17
+            ])
+        browseMode.delegate = self
+        browseMode.tag = 3
+        browseMode.addSegmentWithTitle("Slide", onSelectionImage: nil, offSelectionImage: nil)
+        browseMode.addSegmentWithTitle("Scroll", onSelectionImage: nil, offSelectionImage: nil)
+        browseMode.addSegmentWithTitle("Book", onSelectionImage: nil, offSelectionImage: nil)
+        browseMode.addSegmentWithTitle("Simple", onSelectionImage: nil, offSelectionImage: nil)
+        browseMode.segments[0].titleFont = UIFont(name: "Avenir-Light", size: 18)!
+        browseMode.segments[1].titleFont = UIFont(name: "Avenir-Light", size: 18)!
+        browseMode.segments[2].titleFont = UIFont(name: "Avenir-Light", size: 18)!
+        browseMode.segments[3].titleFont = UIFont(name: "Avenir-Light", size: 18)!
+        browseMode.selectSegmentAtIndex(FolioReader.sharedInstance.currentBrowseMode)
+        menuView.addSubview(browseMode)
     }
 
     override func didReceiveMemoryWarning() {
@@ -221,11 +289,76 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
             
             FolioReader.sharedInstance.currentFontName = index
         }
+        
+        if segmentView.tag == 3 {
+        
+            
+        //htmlを(left pages毎に)切って 用意しておく?
+        //collectionviewの各cellに詰める?
+        //→おそらく、FolioReaderPageを横向きにするだけでできる
+           //FolioReaderPageのwebview.scrollviewを横長に1枚、かつ横スクロールを設定
+           //collectionviewも横向きに設定
+           //ジェスチャーを3つの位置に分ける(全体の恒常設定にする)
+            
+            
+            
+            
+            
+            
+          //slide
+            //切ってあるhtmlを 左から順に横に並べる
+            //scrollviewを横向きにしてページングをオンにする
+            
+            //もしくは、collectionviewを横向きでページングさせる
+            
+            
+        
+          //Scroll
+            //他モードと切り替えできるようにする
+            
+        
+          //book
+            //ライブラリ使用
+            //各ページ uiviewを設定?
+            //ライブラリを書き換え？
+            
+            
+            
+            
+          //simple
+            //タップ位置に応じて pagesを切り替える(切ってあるhtmlから選択し、viewに表示)
+            //左タップ 1つ前のpages を表示
+            //右タップ 1つ次のpages を表示
+            //真ん中タップ ナビゲーションバーを表示
+            
+            
+            
+            
+            
+            switch index {
+            case 0:
+                currentPage.webView.js("setBrowseMode('slide')")
+                break
+            case 1:
+                currentPage.webView.js("setBrowseMode('scroll')")
+                break
+            case 2:
+                currentPage.webView.js("setBrowseMode('book')")
+                break
+            case 3:
+                currentPage.webView.js("setBrowseMode('simple')")
+                break
+            default:
+                break
+            }
+            
+            FolioReader.sharedInstance.currentBrowseMode = index
+        }
     }
     
     // MARK: - Font slider changed
     
-    func sliderValueChanged(sender: HADiscreteSlider) {
+    func fontSliderValueChanged(sender: HADiscreteSlider) {
         let currentPage = FolioReader.sharedInstance.readerCenter.currentPage
         let index = Int(sender.value)
         
@@ -250,6 +383,35 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         }
         
         FolioReader.sharedInstance.currentFontSize = index
+    }
+    
+    // MARK: - LineHeight slider changed
+    
+    func lineHeightSliderValueChanged(sender: HADiscreteSlider) {
+        let currentPage = FolioReader.sharedInstance.readerCenter.currentPage
+        let index = Int(sender.value)
+        
+        switch index {
+        case 0:
+            currentPage.webView.js("setLineHeight('lineHeightOne')")
+            break
+        case 1:
+            currentPage.webView.js("setLineHeight('lineHeightTwo')")
+            break
+        case 2:
+            currentPage.webView.js("setLineHeight('lineHeightThree')")
+            break
+        case 3:
+            currentPage.webView.js("setLineHeight('lineHeightFour')")
+            break
+        case 4:
+            currentPage.webView.js("setLineHeight('lineHeightFive')")
+            break
+        default:
+            break
+        }
+        
+        FolioReader.sharedInstance.currentLineHeight = index
     }
     
     // MARK: - Gestures

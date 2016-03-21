@@ -10,7 +10,7 @@ import UIKit
 import SSZipArchive
 import AEXML
 
-class FREpubParser: NSObject, SSZipArchiveDelegate {
+class FREpubParser: NSObject, SSZipArchiveDelegate {  //構文解析を行うためのプログラム
     let book = FRBook()
     var bookBasePath: String!
     var resourcesBasePath: String!

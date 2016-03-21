@@ -20,6 +20,7 @@ class Highlight: NSManagedObject {
     @NSManaged var highlightId: String
     @NSManaged var page: NSNumber
     @NSManaged var type: NSNumber
+    @NSManaged var memo: String?
 
 }
 
@@ -58,6 +59,7 @@ extension Highlight {
             highlight!.highlightId = object.id
             highlight!.page = object.page
             highlight!.type = object.type.hashValue
+            //highlight!.memo = nil
         }
 
         // Save
@@ -72,6 +74,43 @@ extension Highlight {
             }
         }
     }
+    
+    /*static func saveBookmark(){    //(object: FRHighlight, completion: Completion?) {
+        var highlight: Highlight?
+        
+       
+        if highlight != nil {
+            highlight!.content = object.content
+            highlight!.contentPre = object.contentPre
+            highlight!.contentPost = object.contentPost
+            highlight!.date = object.date
+            highlight!.type = object.type.hashValue
+        } else {
+            highlight = NSEntityDescription.insertNewObjectForEntityForName("Highlight", inManagedObjectContext: coreDataManager.managedObjectContext) as? Highlight
+            coreDataManager.saveContext()
+            
+            highlight!.bookId = object.bookId
+            highlight!.content = object.content
+            highlight!.contentPre = object.contentPre
+            highlight!.contentPost = object.contentPost
+            highlight!.date = NSDate()
+            highlight!.highlightId = object.id
+            highlight!.page = object.page
+            highlight!.type = object.type.hashValue
+        }
+        
+        // Save
+        do {
+            try coreDataManager.managedObjectContext.save()
+            if (completion != nil) {
+                completion!(error: nil)
+            }
+        } catch let error as NSError {
+            if (completion != nil) {
+                completion!(error: error)
+            }
+        }
+    }*/
     
     static func removeById(highlightId: String) {
         var highlight: Highlight?
@@ -88,7 +127,7 @@ extension Highlight {
         }
     }
     
-    static func updateById(highlightId: String, type: HighlightStyle) {
+    static func updateHighlightStyleById(highlightId: String, type: HighlightStyle) {
         var highlight: Highlight?
         
         do {
@@ -97,6 +136,21 @@ extension Highlight {
             
             highlight = try coreDataManager.managedObjectContext.executeFetchRequest(fetchRequest).last as? Highlight
             highlight?.type = type.hashValue
+            coreDataManager.saveContext()
+        } catch let error as NSError {
+            print("Error on update highlight: \(error)")
+        }
+    }
+    
+    static func updateMemoById(highlightId: String, newMemo: String) {
+        var highlight: Highlight?
+        
+        do {
+            let fetchRequest = NSFetchRequest(entityName: "Highlight")
+            fetchRequest.predicate = NSPredicate(format:"highlightId = %@", highlightId)
+            
+            highlight = try coreDataManager.managedObjectContext.executeFetchRequest(fetchRequest).last as? Highlight
+            highlight!.memo = newMemo
             coreDataManager.saveContext()
         } catch let error as NSError {
             print("Error on update highlight: \(error)")

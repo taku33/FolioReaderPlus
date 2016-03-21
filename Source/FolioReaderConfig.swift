@@ -24,6 +24,8 @@ public class FolioReaderConfig: NSObject {
     // Custom actions
     public var shouldHideNavigationOnTap: Bool!
     public var allowSharing: Bool!
+    public var allowBookmarking: Bool!
+    public var allowPageScaling: Bool!
     
     // Reader Strings
     public var localizedHighlightsTitle: String
@@ -60,6 +62,8 @@ public class FolioReaderConfig: NSObject {
 
         self.shouldHideNavigationOnTap = true
         self.allowSharing = true
+        self.allowBookmarking = true
+        self.allowPageScaling = true
         
         self.localizedHighlightsTitle = NSLocalizedString("Highlights", comment: "")
         self.localizedHighlightsDateFormat = "MMM dd, YYYY | HH:mm"

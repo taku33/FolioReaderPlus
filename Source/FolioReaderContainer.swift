@@ -70,9 +70,11 @@ class FolioReaderContainer: UIViewController, FolioReaderSidePanelDelegate {
         
         // Register initial defaults
         FolioReader.defaults.registerDefaults([
-            kCurrentFontFamily: 0,
             kNightMode: false,
+            kCurrentFontFamily: 0,
             kCurrentFontSize: 2,
+            kCurrentLineHeight: 2,
+            kCurrentBrowseMode: 1,
             kCurrentAudioRate: 1,
             kCurrentHighlightStyle: 0,
             kCurrentMediaOverlayStyle: MediaOverlayStyle.Default.rawValue
@@ -100,7 +102,7 @@ class FolioReaderContainer: UIViewController, FolioReaderSidePanelDelegate {
         let panGestureRecognizer = UIPanGestureRecognizer(target: self, action: "handlePanGesture:")
         centerNavigationController.view.addGestureRecognizer(tapGestureRecognizer)
         centerNavigationController.view.addGestureRecognizer(panGestureRecognizer)
-
+        
         // Read async book
         if (epubPath != nil) {
             let priority = DISPATCH_QUEUE_PRIORITY_HIGH
@@ -245,6 +247,8 @@ class FolioReaderContainer: UIViewController, FolioReaderSidePanelDelegate {
     // MARK: Gesture recognizer
     
     func handleTapGesture(recognizer: UITapGestureRecognizer) {
+        
+        print("single tapped")
         if currentState == .LeftPanelExpanded {
             toggleLeftPanel()
         }

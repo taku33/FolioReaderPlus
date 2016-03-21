@@ -210,7 +210,8 @@ html.nightMode {
     background-color: transparent !important;
 }
 
-.nightMode h1, .nightMode h2, .nightMode h3, .nightMode h4, .nightMode h5, .nightMode h6 {
+.nightMode h1, .nightMode h2, .night
+Mode h3, .nightMode h4, .nightMode h5, .nightMode h6 {
     color: #848484 !important;
 }
 
@@ -267,10 +268,21 @@ body {
     -webkit-hyphens: auto !important;
     hyphens: auto !important;
 }
-p, span, div {
+
+.lineHeightOne, .lineHeightOne p, .lineHeightOne span, .lineHeightOne div { font-size: 1em;
+    line-height: 1.0 !important; }
+.lineHeightTwo, .lineHeightTwo p, .lineHeightTwo span, .lineHeightTwo div { font-size: 1em;
+    line-height: 1.5 !important; }
+.lineHeightThree, .lineHeightThree p, .lineHeightThree span, .lineHeightThree div { font-size: 1em;
+    line-height: 2.0 !important; }
+.lineHeightFour, .lineHeightFour p, .lineHeightFour span, .lineHeightFour div { font-size: 1em;
+    line-height: 2.5 !important; }
+.lineHeightFive, .lineHeightFive p, .lineHeightFive span, .lineHeightFive div { font-size: 1em;
+    line-height: 3.0 !important; }
+/*p, span, div {
     font-size: 1em;
-    line-height: 1.5 !important;
-}
+    line-height: 1.5 !important;   //1.5
+}*/
 @media only screen and (min-device-width: 600px) {
     div {
         font-size: 1em;

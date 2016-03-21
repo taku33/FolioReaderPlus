@@ -20,6 +20,7 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     var pageNumber: Int!
     var webView: UIWebView!
     var delegate: FolioPageDelegate!
+    var currentScale:CGFloat = 1.0
     private var shouldShowBar = true
     private var menuIsVisible = false
     
@@ -43,6 +44,21 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         tapGestureRecognizer.numberOfTapsRequired = 1
         tapGestureRecognizer.delegate = self
         webView.addGestureRecognizer(tapGestureRecognizer)
+        
+        if readerConfig.allowPageScaling == true {
+           
+            let doubleTapGestureRecognizer = UITapGestureRecognizer(target: self, action: "handleDoubleTapGesture:")
+            doubleTapGestureRecognizer.numberOfTapsRequired = 2
+            doubleTapGestureRecognizer.delegate = self
+            webView.addGestureRecognizer(doubleTapGestureRecognizer)
+            
+            let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: "handlePinchGesture:")
+            pinchGestureRecognizer.delegate = self
+            webView.addGestureRecognizer(pinchGestureRecognizer)
+            
+            tapGestureRecognizer.requireGestureRecognizerToFail(doubleTapGestureRecognizer)
+        
+        }
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -52,7 +68,7 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        webView.frame = webViewFrame()
+        webView.frame = webViewFrame()  //375,667 など
     }
     
     func webViewFrame() -> CGRect {
@@ -99,13 +115,13 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     
     func webViewDidFinishLoad(webView: UIWebView) {
         
-        webView.scrollView.contentSize = CGSizeMake(pageWidth, webView.scrollView.contentSize.height)
+        webView.scrollView.contentSize = CGSizeMake(pageWidth, webView.scrollView.contentSize.height) //縦長の1枚に設定
         
         if scrollDirection == .Down && isScrolling {
             let bottomOffset = CGPointMake(0, webView.scrollView.contentSize.height - webView.scrollView.bounds.height)
             if bottomOffset.y >= 0 {
                 dispatch_async(dispatch_get_main_queue(), {
-                    webView.scrollView.setContentOffset(bottomOffset, animated: false)
+                    webView.scrollView.setContentOffset(bottomOffset, animated: false)  //縦スクロールを設定
                 })
             }
         }
@@ -167,6 +183,9 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
                         return false
                     }
                 } else {
+                    
+                    print("hrefは..\(href)")
+                    //その章に移動
                     FolioReader.sharedInstance.readerCenter.changePageWith(href: href, animated: true)
                 }
                 
@@ -200,6 +219,13 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         }
         
         return true
+    }
+    
+    func getHTML()-> String? {
+        
+        let html = self.webView.js("getHTML()")
+   
+        return html
     }
     
     // MARK: Gesture recognizer
@@ -247,10 +273,58 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         menuIsVisible = false
     }
     
+    func handleDoubleTapGesture(recognizer: UITapGestureRecognizer) {
+        
+        print("double tapped")
+        let reverseNum:CGFloat = 1/self.currentScale
+        webView.transform = CGAffineTransformScale(webView.transform, reverseNum, reverseNum);
+        self.currentScale = 1.0
+    }
+    
+    func handlePinchGesture(recognizer: UIPinchGestureRecognizer) {
+        
+        //if self.gestureEnabled{     //クライアント側から操作可能に？
+        
+        var scale: CGFloat = recognizer.scale;
+        
+        /*if(self.currentScale>2 || self.currentScale<0.5){
+        
+        }else{*/
+        
+        self.currentScale = self.currentScale * scale
+        
+        webView.transform = CGAffineTransformScale(webView.transform, scale, scale);
+        recognizer.scale = 1.0;
+        //}
+        
+        /*centerViewController.view.transform
+        
+        var scale = recognizer.scale
+        if self.currentScale > 1.0{
+        scale = self.currentScale + (scale - 1.0)
+        }
+        switch recognizer.state{
+        case .Changed:
+        let scaleTransform = CGAffineTransformMakeScale(scale, scale)
+        let transitionTransform = CGAffineTransformMakeTranslation(self.beforePoint.x, self.beforePoint.y)
+        self.transform = CGAffineTransformConcat(scaleTransform, transitionTransform)
+        case .Ended , .Cancelled:
+        if scale <= 1.0{
+        self.currentScale = 1.0
+        self.transform = CGAffineTransformIdentity
+        }else{
+        self.currentScale = scale
+        }
+        default:
+        NSLog("not action")
+        }*/
+        //}
+    }
+    
     // MARK: - Scroll positioning
     
     func scrollPageToOffset(offset: String, animating: Bool) {
-        let jsCommand = "window.scrollTo(0,\(offset));"
+        let jsCommand = "window.scrollTo(0,\(offset));"    //デフォルトで使用可能なDOM操作
         if animating {
             UIView.animateWithDuration(0.35, animations: {
                 self.webView.js(jsCommand)
@@ -260,12 +334,16 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         }
     }
     
+    // anchor は hilight id など。
     func handleAnchor(anchor: String,  avoidBeginningAnchors: Bool, animating: Bool) {
         if !anchor.isEmpty {
             if let offset = getAnchorOffset(anchor) {
-                let isBeginning = CGFloat((offset as NSString).floatValue) > self.frame.height/2
+                print("offsetは\(offset)")
                 
-                if !avoidBeginningAnchors {
+                let isBeginning = CGFloat((offset as NSString).floatValue) > self.frame.height/2
+                print("self.frame.heightは\(self.frame.height)")  //スマホ画面サイズ 667?
+                
+                if !avoidBeginningAnchors {   //章のすぐはじめ辺りの場合も行単位で移動させたいなら
                     scrollPageToOffset(offset, animating: animating)
                 } else if avoidBeginningAnchors && isBeginning {
                     scrollPageToOffset(offset, animating: animating)
@@ -383,12 +461,16 @@ extension UIWebView {
     }
     
     func highlight(sender: UIMenuController?) {
+        print("highlit tapped")
         let highlightAndReturn = js("highlightString('\(HighlightStyle.classForStyle(FolioReader.sharedInstance.currentHighlightStyle))')")
         let jsonData = highlightAndReturn?.dataUsingEncoding(NSUTF8StringEncoding)
         
         do {
             let json = try NSJSONSerialization.JSONObjectWithData(jsonData!, options: []) as! NSArray
             let dic = json.firstObject as! [String: String]
+            
+            print("dicは\(dic)")
+            
             let rect = CGRectFromString(dic["rect"]!)
             
             // Force remove text selection
@@ -400,8 +482,10 @@ extension UIWebView {
             
             // Persist
             let html = js("getHTML()")
-            if let highlight = FRHighlight.matchHighlight(html, andId: dic["id"]!) {
-                Highlight.persistHighlight(highlight, completion: nil)
+            
+            //htmlの中で特定のハイライトスタイルを検索?
+            if let highlight = FRHighlight.matchHighlight(html, andId: dic["id"]!) {  //
+                Highlight.persistHighlight(highlight, completion: nil)   //それを投げてDB保存
             }
         } catch {
             print("Could not receive JSON")
@@ -457,7 +541,7 @@ extension UIWebView {
         FolioReader.sharedInstance.currentHighlightStyle = style.rawValue
 
         if let updateId = js("setHighlightStyle('\(HighlightStyle.classForStyle(style.rawValue))')") {
-            Highlight.updateById(updateId, type: style)
+            Highlight.updateHighlightStyleById(updateId, type: style)
         }
         colors(sender)
     }

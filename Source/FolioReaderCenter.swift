@@ -8,6 +8,9 @@
 
 import UIKit
 import ZFDragableModalTransition
+import JSQWebViewController
+import SafariServices
+import UIMenuItem_CXAImageSupport
 
 let reuseIdentifier = "Cell"
 var isScrolling = false
@@ -231,7 +234,7 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
     var pages: [String]!
     var totalPages: Int!
     var tempFragment: String?
-    var currentPage: FolioReaderPage!
+    var currentPage: FolioReaderPage!      //currentPageはFolioReaderPage(章単位?)である
     var folioReaderContainer: FolioReaderContainer!
     var animator: ZFModalTransitionAnimator!
     var pageIndicatorView: FolioReaderPageIndicator!
@@ -327,10 +330,22 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         // Navbar buttons
         let shareIcon = UIImage(readerImageNamed: "btn-navbar-share")!.imageTintColor(readerConfig.tintColor).imageWithRenderingMode(.AlwaysOriginal)
         let audioIcon = UIImage(readerImageNamed: "man-speech-icon")!.imageTintColor(readerConfig.tintColor).imageWithRenderingMode(.AlwaysOriginal)
+        let bookmarkIcon = UIImage(readerImageNamed: "bookmark-icon")!.imageTintColor(readerConfig.tintColor).imageWithRenderingMode(.AlwaysOriginal)
         let menuIcon = UIImage(readerImageNamed: "btn-navbar-menu")!.imageTintColor(readerConfig.tintColor).imageWithRenderingMode(.AlwaysOriginal)
 
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: menuIcon, style: UIBarButtonItemStyle.Plain, target: self, action:"toggleMenu:")
-
+        
+        var leftBarIcons = [UIBarButtonItem]()
+        
+        leftBarIcons.append(UIBarButtonItem(image: menuIcon, style: UIBarButtonItemStyle.Plain, target: self, action:"toggleMenu:"))
+        //navigationItem.leftBarButtonItem = UIBarButtonItem(image: menuIcon, style: UIBarButtonItemStyle.Plain, target: self, action:"toggleMenu:")
+        
+        if readerConfig.allowBookmarking == true {
+            leftBarIcons.append(UIBarButtonItem(image: bookmarkIcon, style: UIBarButtonItemStyle.Plain, target: self, action:"addBookmark:"))
+        }
+        
+        navigationItem.leftBarButtonItems = leftBarIcons
+        
+        
         var rightBarIcons = [UIBarButtonItem]()
 
         if readerConfig.allowSharing == true {
@@ -413,6 +428,77 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         presentPlayerMenu()
     }
 
+    
+    
+    
+    //左上タップで、ブックマークを追加or削除 → その度にアラート表示?
+    
+    //ブックマークを追加する場合
+    func addBookmark(sender: UIBarButtonItem) {
+    
+        
+        
+        let webView:UIWebView? = UIWebView()
+        
+        //ここのページの真ん中の絶対位置、最初10行(正規表現でhtmlを検索して取り出す？)、時刻 をDBに保存(coredataの各要素として)
+        let highlightAndReturn = webView!.js("highlightString('\(HighlightStyle.classForStyle(FolioReader.sharedInstance.currentHighlightStyle))')")
+        
+        print("yees  \(highlightAndReturn)")
+        
+        let jsonData:NSData? = highlightAndReturn?.dataUsingEncoding(NSUTF8StringEncoding)
+        
+        do {
+            let json = try NSJSONSerialization.JSONObjectWithData(jsonData!, options: []) as! NSArray
+            let dic = json.firstObject as! [String: String]
+            
+            print("dicは\(dic)")
+            
+            
+            let html = webView!.js("getHTML()")  //これだと取れない...
+            
+            if let highlight = FRHighlight.matchHighlight(html, andId: dic["id"]!) {   //idはランダム文字列
+                Highlight.persistHighlight(highlight, completion: nil)   //DB保存など
+            }
+        
+        } catch {
+            print("Could not receive JSON")
+        }
+        
+        
+        
+        //Highlight.saveBookmark()
+        
+        
+        
+        
+        
+        //DBから取り出してMyNoteにブックマークを表示
+        
+        
+        //MyNoteのブックマークをタップするとその位置に移動(行間を変えているとおかしくなる？)
+        
+        
+        //ブックマークアイコンの色の表示をオフからオンに変更させる
+        
+        
+    }
+    
+    //ブックマークを削除する場合
+    func removeBookmark(sender: UIBarButtonItem) {
+     
+        //DBから削除
+        
+        
+        //ブックマークアイコンの色の表示をオンからオフに変更させる
+        
+        
+    }
+    
+    
+    
+    
+    
+    
     // MARK: Toggle menu
     
     func toggleMenu(sender: UIBarButtonItem) {
@@ -501,6 +587,28 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
             break
         case 4:
             classes += " textSizeFive"
+            break
+        default:
+            break
+        }
+        
+        // LineHeight Size (行間のこと)
+        let currentLineHeight = FolioReader.sharedInstance.currentLineHeight
+        switch currentLineHeight {
+        case 0:
+            classes += " lineHeightOne"
+            break
+        case 1:
+            classes += " lineHeightTwo"
+            break
+        case 2:
+            classes += " lineHeightThree"
+            break
+        case 3:
+            classes += " lineHeightFour"
+            break
+        case 4:
+            classes += " lineHeightFive"
             break
         default:
             break
@@ -634,6 +742,7 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         if (completion != nil) { completion!() }
     }
     
+    //残り何ページ(pages left)かを判定
     func pagesForCurrentPage(page: FolioReaderPage?) {
         if let page = page {
             pageIndicatorView.totalPages = Int(ceil(page.webView.scrollView.contentSize.height/pageHeight))
@@ -680,9 +789,14 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         return CGRectMake(0, pageHeight * CGFloat(page-1), pageWidth, pageHeight)
     }
     
+    /* page:1~(itemより1多い)
+    item:0~
+    →両方ともチャプターレベルでカウントする(16章ならpage:19、item:18　など)
+    */
+    
     func changePageWith(page page: Int, animated: Bool = false, completion: (() -> Void)? = nil) {
         if page > 0 && page-1 < totalPages {
-            let indexPath = NSIndexPath(forRow: page-1, inSection: 0)
+            let indexPath = NSIndexPath(forRow: page-1, inSection: 0)   //チャプター単位で移動
             changePageWith(indexPath: indexPath, animated: animated, completion: { () -> Void in
                 self.updateCurrentPage({ () -> Void in
                     if (completion != nil) { completion!() }
@@ -691,14 +805,18 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         }
     }
     
+    // fragment は hilight id など。
     func changePageWith(page page: Int, andFragment fragment: String, animated: Bool = false, completion: (() -> Void)? = nil) {
+        
+        print("pageは..\(page)")
+        
         if currentPageNumber == page {
             if fragment != "" && currentPage != nil {
                 currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animating: animated)
                 if (completion != nil) { completion!() }
             }
         } else {
-            tempFragment = fragment
+            tempFragment = fragment  //これによりpageDidLoad時に行単位で移動
             changePageWith(page: page, animated: animated, completion: { () -> Void in
                 self.updateCurrentPage({ () -> Void in
                     if (completion != nil) { completion!() }
@@ -709,6 +827,9 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
     
     func changePageWith(href href: String, animated: Bool = false, completion: (() -> Void)? = nil) {
         let item = findPageByHref(href)
+        
+        print("itemは..\(item)")
+        
         let indexPath = NSIndexPath(forRow: item, inSection: 0)
         changePageWith(indexPath: indexPath, animated: animated, completion: { () -> Void in
             self.updateCurrentPage({ () -> Void in
@@ -734,6 +855,7 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         }
     }
 
+    //チャプター単位の移動
     func changePageWith(indexPath indexPath: NSIndexPath, animated: Bool = false, completion: (() -> Void)? = nil) {
         UIView.animateWithDuration(animated ? 0.3 : 0, delay: 0, options: .CurveEaseInOut, animations: { () -> Void in
             self.collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: .Top, animated: false)
@@ -1085,13 +1207,39 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         presentViewController(menu, animated: true, completion: nil)
     }
     
+    /*// MARK: - BrowseMode Menu
+    
+    func presentBrowseModeMenu() {
+        hideBars()
+        
+        let menu = FolioReaderBrowseModeMenu()
+        menu.modalPresentationStyle = .Custom
+        
+        animator = ZFModalTransitionAnimator(modalViewController: menu)
+        animator.dragable = false
+        animator.bounces = false
+        animator.behindViewAlpha = 0.4
+        animator.behindViewScale = 1
+        animator.transitionDuration = 0.6
+        animator.direction = ZFModalTransitonDirection.Bottom
+        
+        menu.transitioningDelegate = animator
+        presentViewController(menu, animated: true, completion: nil)
+    }*/
+    
     // MARK: - Highlights List
     
-    func presentHighlightsList() {
-        let menu = UINavigationController(rootViewController: FolioReaderHighlightList())
-        presentViewController(menu, animated: true, completion: nil)
+    func presentMyNote() {
+        let myNote = UINavigationController(rootViewController: FolioReaderMyNote())
+        presentViewController(myNote, animated: true, completion: nil)
     }
 
+    // MARK: - Search View
+    
+    func presentSearchView() {
+        let searchView = UINavigationController(rootViewController: FolioReaderSearchView())
+        presentViewController(searchView, animated: true, completion: nil)
+    }
 
     // MARK: - Audio Player Menu
 

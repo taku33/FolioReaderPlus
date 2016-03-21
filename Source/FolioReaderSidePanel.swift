@@ -50,7 +50,9 @@ class FolioReaderSidePanel: UIViewController, UITableViewDelegate, UITableViewDa
         let imageHighlight = UIImage(readerImageNamed: "icon-highlight")
         let imageClose = UIImage(readerImageNamed: "icon-close")
         let imageFont = UIImage(readerImageNamed: "icon-font")
-        let space = 70 as CGFloat
+        let imageSearch = UIImage(readerImageNamed: "icon-search")
+        //let imageBrowseMode = UIImage(readerImageNamed: "icon-browseMode")  これ
+        let space = 50 as CGFloat
         
         let blackImage = UIImage.imageWithColor(UIColor(white: 0, alpha: 0.2))
         let closeButton = UIButton(frame: CGRect(x: 0, y: 0, width: 50, height: 50))
@@ -62,13 +64,19 @@ class FolioReaderSidePanel: UIViewController, UITableViewDelegate, UITableViewDa
         noSpace.width = isPad || isLargePhone ? -20 : -16
         let iconClose = UIBarButtonItem(customView: closeButton)
         
-        let iconHighlight = UIBarButtonItem(image: imageHighlight, style: .Plain, target: self, action: "didSelectHighlight:")
+        let iconHighlight = UIBarButtonItem(image: imageHighlight, style: .Plain, target: self, action: "didSelectMyNote:")
         iconHighlight.width = space
         
         let iconFont = UIBarButtonItem(image: imageFont, style: .Plain, target: self, action: "didSelectFont:")
         iconFont.width = space
         
-        toolBar.setItems([noSpace, iconClose, iconFont, iconHighlight], animated: false)
+        let iconSearch = UIBarButtonItem(image: imageSearch, style: .Plain, target: self, action: "didSelectSearch:")
+        iconSearch.width = space
+        
+        //let iconBrowseMode = UIBarButtonItem(image: imageBrowseMode, style: .Plain, target: self, action: "didSelectBrowseMode:")
+        iconSearch.width = space
+        
+        toolBar.setItems([noSpace, iconClose, iconFont, iconHighlight, iconSearch], animated: false)
         
         
         // Register cell classes
@@ -182,9 +190,9 @@ class FolioReaderSidePanel: UIViewController, UITableViewDelegate, UITableViewDa
     
     // MARK: - Toolbar actions
     
-    func didSelectHighlight(sender: UIBarButtonItem) {
+    func didSelectMyNote(sender: UIBarButtonItem) {
         FolioReader.sharedInstance.readerContainer.toggleLeftPanel()
-        FolioReader.sharedInstance.readerCenter.presentHighlightsList()
+        FolioReader.sharedInstance.readerCenter.presentMyNote()
     }
     
     func didSelectClose(sender: UIBarButtonItem) {
@@ -200,4 +208,24 @@ class FolioReaderSidePanel: UIViewController, UITableViewDelegate, UITableViewDa
         FolioReader.sharedInstance.readerCenter.presentFontsMenu()
     }
 
+    func didSelectSearch(sender: UIBarButtonItem) {
+        FolioReader.sharedInstance.readerContainer.toggleLeftPanel()
+        FolioReader.sharedInstance.readerCenter.presentSearchView()
+    }
+    
+    /*func didSelectBrowseMode(sender: UIBarButtonItem) {
+        FolioReader.sharedInstance.readerContainer.toggleLeftPanel()
+        FolioReader.sharedInstance.readerCenter.presentBrowseModeMenu()
+    }*/
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -97,7 +97,15 @@ class FRHighlight: NSObject {
         let matches = regex.matchesInString(text, options: [], range: NSRange(location: 0, length: text.utf16.count)) 
         let str = (text as NSString)
         
+        print("patternは\(pattern)")
+        print("regexは\(regex)")
+        print("matchesは\(matches)")
+        print("strは\(str)")
+        
         let mapped = matches.map { (match) -> FRHighlight in
+            
+            print("matchは\(match)")
+            
             var contentPre = str.substringWithRange(NSRange(location: match.range.location-kHighlightRange, length: kHighlightRange))
             var contentPost = str.substringWithRange(NSRange(location: match.range.location + match.range.length, length: kHighlightRange))
             
@@ -125,6 +133,11 @@ class FRHighlight: NSObject {
             highlight.id = id
             highlight.type = HighlightStyle.styleForClass(str.substringWithRange(match.rangeAtIndex(1)))
             highlight.content = str.substringWithRange(match.rangeAtIndex(2))
+            
+            print("contentは\(highlight.content)")
+            print("contentPreは\(contentPre)")
+            print("contentPostは\(contentPost)")
+            
             highlight.contentPre = contentPre
             highlight.contentPost = contentPost
             highlight.page = currentPageNumber

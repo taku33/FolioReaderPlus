@@ -8,7 +8,7 @@
 
 import UIKit
 
-class FRTocReference: NSObject {
+class FRTocReference: NSObject {  //目次参照
     var resource: FRResource!
     var title: String!
     var fragmentID: String?

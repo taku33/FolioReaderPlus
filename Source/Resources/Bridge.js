@@ -23,7 +23,7 @@ function guid() {
         return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     }
     var guid = s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
-    return guid.toUpperCase();
+    return guid.toUpperCase();  //大文字に変換
 }
 
 // Get All HTML
@@ -78,14 +78,29 @@ function setFontSize(cls) {
     addClass(elm, cls);
 }
 
+// Set line-height
+function setLineHeight(cls) {
+    var elm = document.documentElement;
+    removeClass(elm, "lineHeightOne");
+    removeClass(elm, "lineHeightTwo");
+    removeClass(elm, "lineHeightThree");
+    removeClass(elm, "lineHeightFour");
+    removeClass(elm, "lineHeightFive");
+    addClass(elm, cls);
+}
+
 /*
  *	Native bridge Highlight text
  */
 function highlightString(style) {
+    //ユーザーが選択した1つないし複数のrange
     var range = window.getSelection().getRangeAt(0);
-    var selectionContents = range.extractContents();
+    
+    console.log( range );
+    
+    var selectionContents = range.extractContents();　//ユーザーが選択した実際の文字列
     var elm = document.createElement("highlight");
-    var id = guid();
+    var id = guid();  //ランダム文字列
     
     elm.appendChild(selectionContents);
     elm.setAttribute("id", id);
@@ -96,7 +111,7 @@ function highlightString(style) {
     thisHighlight = elm;
     
     var params = [];
-    params.push({id: id, rect: getRectForSelectedText(elm)});
+    params.push({id: id, rect: getRectForSelectedText(elm)});  //座標
     
     return JSON.stringify(params);
 }
@@ -137,13 +152,14 @@ var getRectForSelectedText = function(elm) {
     if (typeof elm === "undefined") elm = window.getSelection().getRangeAt(0);
     
     var rect = elm.getBoundingClientRect();
+    
     return "{{" + rect.left + "," + rect.top + "}, {" + rect.width + "," + rect.height + "}}";
 }
 
 // Method that call that a hightlight was clicked
 // with URL scheme and rect informations
 var callHighlightURL = function(elm) {
-    var URLBase = "highlight://";
+    var URLBase = "highlight://";       //JSからネイティブを呼び出す
     var currentHighlightRect = getRectForSelectedText(elm);
     thisHighlight = elm;
     
@@ -219,7 +235,7 @@ function playAudio() {
  Play Audio Fragment ID - tells page controller to begin playing audio from the following ID
  */
 function playAudioFragmentID(fragmentID) {
-    var URLBase = "play-audio://";
+    var URLBase = "play-audio://";   //JSからネイティブを呼び出す
     window.location = URLBase + (fragmentID?encodeURIComponent(fragmentID):"")
 }
 

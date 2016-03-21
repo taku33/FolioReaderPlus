@@ -8,11 +8,11 @@
 
 import UIKit
 
-struct Spine {
+struct Spine {     //本の背
     var linear: Bool!
     var resource: FRResource!
     
-    init(resource: FRResource, linear: Bool = true) {
+    init(resource: FRResource, linear: Bool = true) {   //線形?
         self.resource = resource
         self.linear = linear
     }
