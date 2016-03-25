@@ -76,6 +76,7 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
             let statusbarHeight = UIApplication.sharedApplication().statusBarFrame.size.height
             let navBarHeight = FolioReader.sharedInstance.readerCenter.navigationController?.navigationBar.frame.size.height
             let navTotal = statusbarHeight + navBarHeight!
+            
             let newFrame = CGRect(x: self.bounds.origin.x, y: self.bounds.origin.y+navTotal, width: self.bounds.width, height: self.bounds.height-navTotal)
             return newFrame
         } else {
@@ -117,13 +118,38 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         
         webView.scrollView.contentSize = CGSizeMake(pageWidth, webView.scrollView.contentSize.height) //縦長の1枚に設定
         
-        if scrollDirection == .Down && isScrolling {
-            let bottomOffset = CGPointMake(0, webView.scrollView.contentSize.height - webView.scrollView.bounds.height)
-            if bottomOffset.y >= 0 {
-                dispatch_async(dispatch_get_main_queue(), {
-                    webView.scrollView.setContentOffset(bottomOffset, animated: false)  //縦スクロールを設定
-                })
+        if(FolioReader.sharedInstance.currentBrowseMode == 0 || FolioReader.sharedInstance.currentBrowseMode == 1){  //slide or scroll mode の場合
+            
+            if scrollDirection == .Down && isScrolling {  //1つ前の章に戻るなら?
+                let bottomOffset = CGPointMake(0, webView.scrollView.contentSize.height - webView.scrollView.bounds.height)
+                if bottomOffset.y >= 0 {
+                    dispatch_async(dispatch_get_main_queue(), {
+                        webView.scrollView.setContentOffset(bottomOffset, animated: false)  //1つ前の章の底部分へ移動
+                    })
+                }
             }
+            
+            FolioReader.sharedInstance.readerCenter.collectionView.pagingEnabled = true
+            FolioReader.sharedInstance.readerCenter.collectionView.scrollEnabled = true
+            webView.scrollView.scrollEnabled = true
+            
+            if(FolioReader.sharedInstance.currentBrowseMode == 0){  //slide mode
+                
+                webView.scrollView.pagingEnabled = true
+                
+            }else{  //scroll mode
+             
+                webView.scrollView.pagingEnabled = false
+            }
+        }else{
+            //simple mode
+            //(左タップor右タップで)ページを変更する
+            //changepage、文字サイズ等変更 による変化を考慮
+            
+            FolioReader.sharedInstance.readerCenter.collectionView.pagingEnabled = false
+            FolioReader.sharedInstance.readerCenter.collectionView.scrollEnabled = false
+            webView.scrollView.scrollEnabled = false
+            webView.scrollView.pagingEnabled = false
         }
         
         UIView.animateWithDuration(0.2, animations: {webView.alpha = 1}) { finished in
@@ -247,30 +273,48 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     func handleTapGesture(recognizer: UITapGestureRecognizer) {
 //        webView.setMenuVisible(false)
         
-        if FolioReader.sharedInstance.readerCenter.navigationController!.navigationBarHidden {
-            let menuIsVisibleRef = menuIsVisible
-            
-            let selected = webView.js("getSelectedText()")
-
-            if selected == nil || selected!.characters.count == 0 {
-                let seconds = 0.4
-                let delay = seconds * Double(NSEC_PER_SEC)  // nanoseconds per seconds
-                let dispatchTime = dispatch_time(DISPATCH_TIME_NOW, Int64(delay))
-
-                dispatch_after(dispatchTime, dispatch_get_main_queue(), {
-                    
-                    if self.shouldShowBar && !menuIsVisibleRef {
-                        FolioReader.sharedInstance.readerCenter.toggleBars()
-                    }
-                    self.shouldShowBar = true
-                })
-            }
-        } else if readerConfig.shouldHideNavigationOnTap == true {
-            FolioReader.sharedInstance.readerCenter.hideBars()
-        }
         
-        // Reset menu
-        menuIsVisible = false
+        let touchedPoint:CGPoint = recognizer.locationOfTouch(0, inView: self)
+        
+        if(touchedPoint.x < webView.frame.width/3){  //左タップ
+            
+            if(FolioReader.sharedInstance.currentBrowseMode == 2){  //simple browse modeの場合
+                handleSimpleBrowsePrevious()
+            }
+            
+        }else if(webView.frame.width/3 <= touchedPoint.x  &&  touchedPoint.x <= webView.frame.width*2/3){  //真ん中タップ
+            
+            if FolioReader.sharedInstance.readerCenter.navigationController!.navigationBarHidden {
+                let menuIsVisibleRef = menuIsVisible
+                
+                let selected = webView.js("getSelectedText()")
+                
+                if selected == nil || selected!.characters.count == 0 {
+                    let seconds = 0.4
+                    let delay = seconds * Double(NSEC_PER_SEC)  // nanoseconds per seconds
+                    let dispatchTime = dispatch_time(DISPATCH_TIME_NOW, Int64(delay))
+                    
+                    dispatch_after(dispatchTime, dispatch_get_main_queue(), {
+                        
+                        if self.shouldShowBar && !menuIsVisibleRef {
+                            FolioReader.sharedInstance.readerCenter.toggleBars()
+                        }
+                        self.shouldShowBar = true
+                    })
+                }
+            } else if readerConfig.shouldHideNavigationOnTap == true {
+                FolioReader.sharedInstance.readerCenter.hideBars()
+            }
+            
+            // Reset menu
+            menuIsVisible = false
+            
+        }else{   //右タップ
+            
+            if(FolioReader.sharedInstance.currentBrowseMode == 2){  //simple browse modeの場合
+                handleSimpleBrowseNext()
+            }
+        }
     }
     
     func handleDoubleTapGesture(recognizer: UITapGestureRecognizer) {
@@ -355,6 +399,74 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     func getAnchorOffset(anchor: String) -> String? {
         let jsAnchorHandler = "(function() {var target = '\(anchor)';var elem = document.getElementById(target); if (!elem) elem=document.getElementsByName(target)[0];return elem.offsetTop;})();"
         return webView.js(jsAnchorHandler)
+    }
+    
+    func handleSimpleBrowseNext() {
+        if(webView.scrollView.contentSize.height > webView.scrollView.contentOffset.y){
+            webView.scrollView.contentOffset.y += pageHeight-30  //下部の(minutes、pages left)ラベルの大きさも考慮
+        }else{
+            let currentIndexPath = FolioReader.sharedInstance.readerCenter.getCurrentIndexPath()
+            
+            print("totalpagesは\(FolioReader.sharedInstance.readerCenter.totalPages)")
+            print("currentIndexPath.rowは\(currentIndexPath.row)")
+            
+            //collectionview cell(章)を1つ次に進める(あるなら)
+            if(FolioReader.sharedInstance.readerCenter.totalPages > currentIndexPath.row+1){
+                let nextIndexPath = NSIndexPath(forRow: currentIndexPath.row+1, inSection: 0)
+                    FolioReader.sharedInstance.readerCenter.collectionView.scrollToItemAtIndexPath(nextIndexPath, atScrollPosition: .Top, animated: false)
+            }
+        }
+    }
+    
+    func handleSimpleBrowsePrevious() {
+        if(0 < webView.scrollView.contentOffset.y){
+            webView.scrollView.contentOffset.y -= pageHeight-30
+        }else{
+            let currentIndexPath = FolioReader.sharedInstance.readerCenter.getCurrentIndexPath()
+            
+            //collectionview cell(章)を1つ前に戻す(あるなら)
+            if(currentIndexPath.row != 0){
+                
+                  self.scrollToPreviousCell() { error in
+                
+                    /*
+                    print("1つ前の章の底部分へ移動")
+                    let bottomOffset = CGPointMake(0, FolioReader.sharedInstance.readerCenter.currentPage.webView.scrollView.contentSize.height - FolioReader.sharedInstance.readerCenter.currentPage.webView.scrollView.bounds.height)
+                    
+                    if bottomOffset.y >= 0 {
+                      //let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * Double(NSEC_PER_SEC)))
+                      //dispatch_after(delayTime, dispatch_get_main_queue()) {
+                        print("bottomOffset is \(bottomOffset)")
+                        dispatch_async(dispatch_get_main_queue(), {
+                            FolioReader.sharedInstance.readerCenter.currentPage.webView.scrollView.setContentOffset(bottomOffset, animated: false)
+                        })
+                      //}
+                    }
+                    */
+                    
+                    return
+                }
+            }
+            
+            //バグ修正: pages left、minutesを直す
+            
+            
+        }
+    }
+    
+    /*private func scrollToPreviousCell(completionHandler: (NSError?)->()) {
+        scrollToPreviousCellRequest(completionHandler)
+    }*/
+    
+    private func scrollToPreviousCell(completionHandler: (NSError?) -> ()){
+        
+        let currentIndexPath = FolioReader.sharedInstance.readerCenter.getCurrentIndexPath()
+        let previousIndexPath = NSIndexPath(forRow: currentIndexPath.row-1, inSection: 0)
+        FolioReader.sharedInstance.readerCenter.collectionView.scrollToItemAtIndexPath(previousIndexPath, atScrollPosition: .Bottom, animated: false)
+        
+        print("コンプレーションパターン")
+        completionHandler(nil)
+        
     }
     
     override func canPerformAction(action: Selector, withSender sender: AnyObject?) -> Bool {

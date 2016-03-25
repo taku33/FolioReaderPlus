@@ -142,7 +142,14 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
         
     //正規表現検索+searchタグの挿入操作 をネイティブ側ではなく、JS側でやることでうまくいきそう
         
+    //もしくはこれ使う？
+        //let tag = "<highlight id=\"\(item.highlightId)\" onclick=\"callHighlightURL(this);\" class=\"\(style)\">\(item.content)</highlight>"
+        //let newRange = NSRange(location: range.location + item.contentPre.characters.count, length: item.content.characters.count)
+        //html = html.stringByReplacingCharactersInRange(newRange, withString: tag)
+        
+        
         currentPage.webView.scrollView.contentOffset.y = 0
+        
         
         
         //ユーザーが画面をタップしたらsearchタグを削除する→この時ハイライトが消えるはず

@@ -269,7 +269,9 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         collectionView.autoresizingMask = [.FlexibleWidth, .FlexibleHeight]
         collectionView.delegate = self
         collectionView.dataSource = self
-        collectionView.pagingEnabled = true
+        /*if(FolioReader.sharedInstance.currentBrowseMode == 0 || FolioReader.sharedInstance.currentBrowseMode == 1){ //slide、scroll
+            collectionView.pagingEnabled = true
+        }*/
         collectionView.showsVerticalScrollIndicator = false
         collectionView.backgroundColor = background
         collectionView.decelerationRate = UIScrollViewDecelerationRateFast
@@ -756,8 +758,9 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         return page
     }
     
+    
     func getCurrentIndexPath() -> NSIndexPath {
-        let indexPaths = collectionView.indexPathsForVisibleItems()
+        let indexPaths = collectionView.indexPathsForVisibleItems()  //見えているものだけ
         var indexPath = NSIndexPath()
         
         if indexPaths.count > 1 {

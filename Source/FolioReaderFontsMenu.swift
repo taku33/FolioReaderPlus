@@ -207,12 +207,12 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         browseMode.tag = 3
         browseMode.addSegmentWithTitle("Slide", onSelectionImage: nil, offSelectionImage: nil)
         browseMode.addSegmentWithTitle("Scroll", onSelectionImage: nil, offSelectionImage: nil)
-        browseMode.addSegmentWithTitle("Book", onSelectionImage: nil, offSelectionImage: nil)
         browseMode.addSegmentWithTitle("Simple", onSelectionImage: nil, offSelectionImage: nil)
+        //browseMode.addSegmentWithTitle("Book", onSelectionImage: nil, offSelectionImage: nil)
         browseMode.segments[0].titleFont = UIFont(name: "Avenir-Light", size: 18)!
         browseMode.segments[1].titleFont = UIFont(name: "Avenir-Light", size: 18)!
         browseMode.segments[2].titleFont = UIFont(name: "Avenir-Light", size: 18)!
-        browseMode.segments[3].titleFont = UIFont(name: "Avenir-Light", size: 18)!
+        //browseMode.segments[3].titleFont = UIFont(name: "Avenir-Light", size: 18)!
         browseMode.selectSegmentAtIndex(FolioReader.sharedInstance.currentBrowseMode)
         menuView.addSubview(browseMode)
     }
@@ -291,67 +291,31 @@ class FolioReaderFontsMenu: UIViewController, SMSegmentViewDelegate {
         }
         
         if segmentView.tag == 3 {
-        
-            
-        //htmlを(left pages毎に)切って 用意しておく?
-        //collectionviewの各cellに詰める?
-        //→おそらく、FolioReaderPageを横向きにするだけでできる
-           //FolioReaderPageのwebview.scrollviewを横長に1枚、かつ横スクロールを設定
-           //collectionviewも横向きに設定
-           //ジェスチャーを3つの位置に分ける(全体の恒常設定にする)
-            
-            
-            
-            
-            
-            
-          //slide
-            //切ってあるhtmlを 左から順に横に並べる
-            //scrollviewを横向きにしてページングをオンにする
-            
-            //もしくは、collectionviewを横向きでページングさせる
-            
-            
-        
-          //Scroll
-            //他モードと切り替えできるようにする
-            
-        
-          //book
-            //ライブラリ使用
-            //各ページ uiviewを設定?
-            //ライブラリを書き換え？
-            
-            
-            
-            
-          //simple
-            //タップ位置に応じて pagesを切り替える(切ってあるhtmlから選択し、viewに表示)
-            //左タップ 1つ前のpages を表示
-            //右タップ 1つ次のpages を表示
-            //真ん中タップ ナビゲーションバーを表示
-            
-            
-            
-            
-            
             switch index {
             case 0:
-                currentPage.webView.js("setBrowseMode('slide')")
+                //slide
+                
                 break
             case 1:
-                currentPage.webView.js("setBrowseMode('scroll')")
+                //scroll
+                
                 break
             case 2:
-                currentPage.webView.js("setBrowseMode('book')")
+                //simple
+                
                 break
-            case 3:
-                currentPage.webView.js("setBrowseMode('simple')")
-                break
+            /*case 3:
+                //book 
+                //ライブラリ使用
+                //各ページ uiviewを設定?
+                //ライブラリを書き換え？
+                break*/
             default:
                 break
             }
             
+            FolioReader.sharedInstance.readerCenter.reloadData()
+            //collectionView.reloadData()
             FolioReader.sharedInstance.currentBrowseMode = index
         }
     }
