@@ -269,7 +269,8 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         collectionView.autoresizingMask = [.FlexibleWidth, .FlexibleHeight]
         collectionView.delegate = self
         collectionView.dataSource = self
-        /*if(FolioReader.sharedInstance.currentBrowseMode == 0 || FolioReader.sharedInstance.currentBrowseMode == 1){ //slide、scroll
+        /*if(FolioReader.sharedInstance.currentBrowseMode == 0 || FolioReader.sharedInstance.currentBrowseMode == 1){ 
+        //slide、scroll
             collectionView.pagingEnabled = true
         }*/
         collectionView.showsVerticalScrollIndicator = false
