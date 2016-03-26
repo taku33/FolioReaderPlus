@@ -255,6 +255,12 @@ class FolioReaderContainer: UIViewController, FolioReaderSidePanelDelegate {
     }
     
     func handlePanGesture(recognizer: UIPanGestureRecognizer) {
+        
+        if(FolioReader.sharedInstance.readerCenter.currentPage.webView.tag == 1){ //検索テーブルをタップして行移動後なら
+            FRHighlight.removeById("search") // Remove from HTML
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 0  //後への影響を無くすため元に戻す
+        }
+        
         let gestureIsDraggingFromLeftToRight = (recognizer.velocityInView(view).x > 0)
         
         switch(recognizer.state) {

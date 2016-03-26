@@ -430,8 +430,6 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
     func togglePlay(sender: UIBarButtonItem) {
         presentPlayerMenu()
     }
-
-    
     
     
     //左上タップで、ブックマークを追加or削除 → その度にアラート表示?
@@ -816,7 +814,7 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         
         if currentPageNumber == page {
             if fragment != "" && currentPage != nil {
-                currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animating: animated)
+                currentPage.handleAnchor(fragment, avoidBeginningAnchors: false, animating: animated) //avoidBeginningAnchors: trueだと、検索結果からの行移動ができない場合があるためfalse
                 if (completion != nil) { completion!() }
             }
         } else {

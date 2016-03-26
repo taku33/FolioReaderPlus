@@ -158,6 +158,15 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         }
         
         delegate.pageDidLoad!(self)
+        
+        if(webView.tag == 1){  //検索テーブルをタップして行移動 の場合
+            let currentPageNum = FolioReader.sharedInstance.readerCenter.currentPage.pageNumber
+            FolioReader.sharedInstance.readerCenter.changePageWith(page: currentPageNum, andFragment: "search") //tag id
+            //webView.tag = 0
+            
+            //ユーザーが画面を何かしらタップしたら(PanGestureも含む)searchタグを削除する→この時ハイライトが消える
+        }
+        print("webView.tagは\(webView.tag)")
     }
     
     func webView(webView: UIWebView, shouldStartLoadWithRequest request: NSURLRequest, navigationType: UIWebViewNavigationType) -> Bool {
@@ -273,6 +282,10 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     func handleTapGesture(recognizer: UITapGestureRecognizer) {
 //        webView.setMenuVisible(false)
         
+        if(webView.tag == 1){
+            FRHighlight.removeById("search") // Remove from HTML
+            webView.tag = 0  //後への影響を無くすため元に戻す
+        }
         
         let touchedPoint:CGPoint = recognizer.locationOfTouch(0, inView: self)
         
@@ -318,8 +331,12 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     }
     
     func handleDoubleTapGesture(recognizer: UITapGestureRecognizer) {
-        
+
         print("double tapped")
+        if(webView.tag == 1){
+            FRHighlight.removeById("search")
+            webView.tag = 0
+        }
         let reverseNum:CGFloat = 1/self.currentScale
         webView.transform = CGAffineTransformScale(webView.transform, reverseNum, reverseNum);
         self.currentScale = 1.0
@@ -327,7 +344,10 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     
     func handlePinchGesture(recognizer: UIPinchGestureRecognizer) {
         
-        //if self.gestureEnabled{     //クライアント側から操作可能に？
+        if(webView.tag == 1){
+            FRHighlight.removeById("search")
+            webView.tag = 0
+        }
         
         var scale: CGFloat = recognizer.scale;
         
@@ -574,6 +594,11 @@ extension UIWebView {
     
     func highlight(sender: UIMenuController?) {
         print("highlit tapped")
+        if(FolioReader.sharedInstance.readerCenter.currentPage.webView.tag == 1){
+            FRHighlight.removeById("search") // Remove from HTML
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 0
+        }
+        
         let highlightAndReturn = js("highlightString('\(HighlightStyle.classForStyle(FolioReader.sharedInstance.currentHighlightStyle))')")
         let jsonData = highlightAndReturn?.dataUsingEncoding(NSUTF8StringEncoding)
         

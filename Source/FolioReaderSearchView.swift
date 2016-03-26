@@ -16,20 +16,22 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     private var displayWidth: CGFloat?
     private var displayHeight: CGFloat?
     private let SEARCHBAR_HEIGHT: CGFloat = 44
-    private var matches:[NSTextCheckingResult]?    //:[String]?  // = [""]  //:[String]?
+    private var matches:[NSTextCheckingResult]?
     private var matchesStrArray:[String] = []
     private var html:String?
     
     override func viewDidLoad() {
         super.viewDidLoad()
       
-        //とりあえず本全体ではなく章単位での検索にする
+        //とりあえず本全体(全文検索?)ではなく章単位での検索にする
         self.html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()
         print("htmlは. \(self.html)")
         
         barHeight = UIApplication.sharedApplication().statusBarFrame.size.height  //0
         displayWidth = self.view.frame.width
         displayHeight = self.view.frame.height
+        
+        self.view.backgroundColor = UIColor.whiteColor()
         
         self.search = UISearchBar();   //self.search? =  とするとエラー　　Optional Chainingになるため
         self.search!.delegate = self
@@ -45,10 +47,11 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     func searchBarSearchButtonClicked(searchBar: UISearchBar){   //protocolの実装
         print("searchtextは \(search!.text!)")
         
-        //正規表現で文字列をパターンにしてhtml内を検索
-        //それぞれの前後の文字列などを確保
-        let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"   //タグ抜き検索したい
-        // "<highlight id=\" onclick=\".*?\" class=\"(.*?)\">((.|\\s)*?)</highlight>"
+        //機能追加: 何度も検索を可能にする、下の方の検索結果も見えるように
+        
+        let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"  //それぞれの前後の文字列も確保?
+        //"\(search!.text!)"  //バグ修正: 一致する文字列があると個別に移動できない..
+        
         print("patternは \(pattern)")
       
         self.matches =  RegExp(pattern).matches(self.html!)
@@ -81,12 +84,25 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
             //self.showAlert("検索結果がありません",title: "",buttonTitle: "了解")
         }
     }
+    //バグ修正: タグ抜き検索したい?
+    /*let href = splitedPath[1].stringByTrimmingCharactersInSet(NSCharacterSet(charactersInString: "/"))
+    let hrefPage = FolioReader.sharedInstance.readerCenter.findPageByHref(href)+1
+    
+    if hrefPage == pageNumber {
+    // Handle internal #anchor
+    if anchorFromURL != nil {
+    handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true)
+    return false
+    }
+    } else {
+    FolioReader.sharedInstance.readerCenter.changePageWith(href: href, animated: true)
+    }*/
   
     func addTable(){
 
         print("self.tableは\(self.table)") //この時の中身はnil
         self.table = UITableView();  //インスタンスを代入　これにより中身がnilでなくなる
-        self.table!.frame = CGRectMake(0, barHeight! + SEARCHBAR_HEIGHT, displayWidth!, displayHeight! - barHeight! - SEARCHBAR_HEIGHT);
+        self.table!.frame = CGRectMake(0, barHeight! + SEARCHBAR_HEIGHT + 60, displayWidth!, displayHeight! - barHeight! - SEARCHBAR_HEIGHT - 60);
         self.table!.registerClass(UITableViewCell.self, forCellReuseIdentifier: "Cell")
         self.table!.delegate = self
         self.table!.dataSource = self;
@@ -119,82 +135,34 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     func tableView(table: UITableView, didSelectRowAtIndexPath indexPath:NSIndexPath) {
         print("tappした \(indexPath)")
         
-        //まずこのsearchviewを消す
-
-        
-        
-        //<search id=  class= > ~~~ </search>をhtml内に一時的に挿入する (classにはハイライトのスタイル)
-        let range = self.matches![indexPath.row].range
-        print("rangeは\(range)")
-        
-        
-        
-        //currentPage、search idを用いて その行が最上部に来るように行移動する
-        let currentPage = FolioReader.sharedInstance.readerCenter.currentPage
-        
-        
-        
-       
-        
-        
-        
-        
+        let item = self.matches![indexPath.row]
+        let content = (self.html! as NSString).substringWithRange(item.range)
+        let searchTagId = "search"
         
     //正規表現検索+searchタグの挿入操作 をネイティブ側ではなく、JS側でやることでうまくいきそう
+    //もしくは以下のやり方
+        self.dismissViewControllerAnimated(true, completion: nil)
         
-    //もしくはこれ使う？
-        //let tag = "<highlight id=\"\(item.highlightId)\" onclick=\"callHighlightURL(this);\" class=\"\(style)\">\(item.content)</highlight>"
-        //let newRange = NSRange(location: range.location + item.contentPre.characters.count, length: item.content.characters.count)
-        //html = html.stringByReplacingCharactersInRange(newRange, withString: tag)
-        
-        
-        currentPage.webView.scrollView.contentOffset.y = 0
-        
-        
-        
-        //ユーザーが画面をタップしたらsearchタグを削除する→この時ハイライトが消えるはず
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        /*func changePageWith(page page: Int, andFragment fragment: String, animated: Bool = false, completion: (() -> Void)? = nil) {
-            if currentPageNumber == page {
-                if fragment != "" && currentPage != nil {
-                    currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animating: animated)
-                    if (completion != nil) { completion!() }
-                }
-            } else {
-                tempFragment = fragment
-                changePageWith(page: page, animated: animated, completion: { () -> Void in
-                    self.updateCurrentPage({ () -> Void in
-                        if (completion != nil) { completion!() }
-                    })
-                })
-            }
-        }*/
-        
-        
-        /*let href = splitedPath[1].stringByTrimmingCharactersInSet(NSCharacterSet(charactersInString: "/"))
-        let hrefPage = FolioReader.sharedInstance.readerCenter.findPageByHref(href)+1
-        
-        if hrefPage == pageNumber {
-            // Handle internal #anchor
-            if anchorFromURL != nil {
-                handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true)
-                return false
-            }
-        } else {
-            FolioReader.sharedInstance.readerCenter.changePageWith(href: href, animated: true)
-        }*/
+        var htmls = (self.html! as NSString)
+        let style = HighlightStyle.classForStyle(2)  //青色
+        let tag = "<search id=\"\(searchTagId)\" class=\"\(style)\">\(content)</search>"
+        let range: NSRange = htmls.rangeOfString(content, options: .LiteralSearch)
+        if range.location != NSNotFound {
+            let newRange = NSRange(location: range.location, length: content.characters.count)
+            htmls = htmls.stringByReplacingCharactersInRange(newRange, withString: tag)
+            
+            let currentPageNum = FolioReader.sharedInstance.readerCenter.currentPage.pageNumber
+            let resource = book.spine.spineReferences[currentPageNum-1].resource
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 1  //didfinishLoad時に行移動させるため
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.alpha = 0
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.loadHTMLString(htmls as String, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
+            
+            print("htmls is \(htmls)")
+        }
+        else {
+            print("item range not found")
+        }
     }
-    
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
