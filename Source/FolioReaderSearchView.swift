@@ -18,13 +18,13 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     private let SEARCHBAR_HEIGHT: CGFloat = 44
     private var matches:[NSTextCheckingResult]?
     private var matchesStrArray:[String] = []
-    private var html:String?
+    private var html:String?  //bodyHtml
     
     override func viewDidLoad() {
         super.viewDidLoad()
       
         //とりあえず本全体(全文検索?)ではなく章単位での検索にする
-        self.html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()
+        self.html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()  //getHTMLBody()
         print("htmlは. \(self.html)")
         
         barHeight = UIApplication.sharedApplication().statusBarFrame.size.height  //0
@@ -47,14 +47,14 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     func searchBarSearchButtonClicked(searchBar: UISearchBar){   //protocolの実装
         print("searchtextは \(search!.text!)")
         
-        //機能追加: 何度も検索を可能にする、下の方の検索結果も見えるように
+        //機能追加: 何度も検索を可能にする、キーボードを隠せて下の方の検索結果も見えるように
         
         let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"  //それぞれの前後の文字列も確保?
-        //"\(search!.text!)"  //バグ修正: 一致する文字列があると個別に移動できない..
+        //"\(search!.text!)"
         
         print("patternは \(pattern)")
       
-        self.matches =  RegExp(pattern).matches(self.html!)
+        self.matches =  RegExp(pattern).matches(self.html!)  //bodyHtml!
         print("matchesは\(self.matches)")
         
         if(self.matches != nil){
@@ -62,6 +62,23 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
             for i in 0 ..< self.matches!.count {
                 self.matchesStrArray.append( (self.html! as NSString).substringWithRange(self.matches![i].range) )
             }
+            /*
+            let matchCount = self.matches!.count
+            for i in 0 ..< matchCount {
+                
+                let matchHtmlStr = (self.bodyHtml! as NSString).substringWithRange(self.matches![i].range)
+                let matchStr = self.stripTagsFromStr(matchHtmlStr)
+                print("タグを抜いたmatchStrは\(matchStr)")
+                
+                if matchStr.containsString("\(search!.text!)") {
+                    //tableに表示
+                    self.matchesStrArray.append( matchHtmlStr )
+                    
+                }else{
+                    //tableに表示させない
+                    self.matches?.removeAtIndex(i)  //1字違いが起きない？
+                }
+            }*/
            
             if(self.table == nil){
                 
@@ -84,20 +101,66 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
             //self.showAlert("検索結果がありません",title: "",buttonTitle: "了解")
         }
     }
-    //バグ修正: タグ抜き検索したい?
-    /*let href = splitedPath[1].stringByTrimmingCharactersInSet(NSCharacterSet(charactersInString: "/"))
-    let hrefPage = FolioReader.sharedInstance.readerCenter.findPageByHref(href)+1
     
-    if hrefPage == pageNumber {
-    // Handle internal #anchor
-    if anchorFromURL != nil {
-    handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true)
-    return false
+    //機能追加:検索後の行移動し、画面タップでハイライト消すのは uiviewを一時生成してbegantouchで実行？
+    
+    
+    
+    
+    func stripTagsFromStr(var htmlStr:String)-> String {
+        
+        print("最初のhtmlStrは\(htmlStr)")
+        
+        let thescanner = NSScanner(string: htmlStr)
+        thescanner.charactersToBeSkipped = nil
+        var text:NSString? = nil;
+        while (thescanner.atEnd == false) {
+         
+            if(thescanner.scanUpToString("<", intoString: nil) == true){  // "<"が存在した場合
+             
+                if(thescanner.scanUpToString(">", intoString: &text) == true){
+            
+                    
+                }else{
+                    thescanner.scanUpToString("\(htmlStr.characters.last)", intoString: &text)
+                }
+            }else{
+                
+            }
+            //replace the found tag with a space
+            //(you can filter multi-spaces out later if you wish)
+            if(text != nil){
+                htmlStr = htmlStr.stringByReplacingOccurrencesOfString(NSString(format:"%@>", text!) as String , withString: "")
+            }
+        }
+        print("第1段階でのhtmlStrは\(htmlStr)")
+        
+        let thescanner2 = NSScanner(string: htmlStr)
+        thescanner2.charactersToBeSkipped = nil
+        var text2:NSString? = nil;
+        while (thescanner2.atEnd == false) {
+            
+            if(thescanner2.scanUpToString(">", intoString: &text2) == true){
+            //thescanner2.scanUpToString("<", intoString: &text)
+                
+                
+            
+            }else{
+                
+            }
+            
+            //replace the found tag with a space
+            //(you can filter multi-spaces out later if you wish)
+            if(text2 != nil){
+                htmlStr = htmlStr.stringByReplacingOccurrencesOfString(NSString(format:"%@>", text2!) as String , withString: "")
+            }
+        }
+        print("第2段階でのhtmlStrは\(htmlStr)")
+        
+        // Trimmed return
+        return htmlStr.stringByTrimmingCharactersInSet(NSCharacterSet.whitespaceCharacterSet())
     }
-    } else {
-    FolioReader.sharedInstance.readerCenter.changePageWith(href: href, animated: true)
-    }*/
-  
+    
     func addTable(){
 
         print("self.tableは\(self.table)") //この時の中身はnil
@@ -124,14 +187,62 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     func tableView(table: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
        
         print("indexPath == \(indexPath)")
-        
         // tableCell の ID で UITableViewCell のインスタンスを生成
         let cell = table.dequeueReusableCellWithIdentifier("Cell", forIndexPath: indexPath)
-        cell.textLabel?.text = "\(matchesStrArray[indexPath.row])"
+        cell.textLabel?.text = "\(self.matchesStrArray[indexPath.row])"
         
         return cell
     }
     
+    /*
+    func tableView(table: UITableView, didSelectRowAtIndexPath indexPath:NSIndexPath) {
+        print("tappした \(indexPath)")
+        
+        let item = self.matches![indexPath.row]
+        //item.rangeを調整し 検索文字列の部分だけにする
+        //まずitemの中での検索文字列の位置を取得
+        let itemStr = (self.bodyHtml! as NSString).substringWithRange(item.range)
+        let searchTextLocation = (itemStr as NSString).rangeOfString(search!.text!).location
+        //その位置の分だけずらす
+        let adjustedRange = NSMakeRange(item.range.location + searchTextLocation, search!.text!.characters.count)
+        
+        self.dismissViewControllerAnimated(true, completion: nil)
+        
+        //searchタグの挿入操作(全てJS側でやってもうまくいきそう)
+        //検索文字列の部分だけにハイライトタグを追加する
+        //let content = (self.bodyHtml! as NSString).substringWithRange(adjustedRange)
+        let searchTagId = "search"
+        var bodyHtmls = (self.bodyHtml! as NSString)
+        let style = HighlightStyle.classForStyle(2)  //青色
+        let tag = "<search id=\"\(searchTagId)\" class=\"\(style)\">\(search!.text!)</search>"
+        
+        //これを使うと同一文字があると個別に移動できない
+        //let range: NSRange = adjustedRange   //bodyHtmls.rangeOfString(content, options: .LiteralSearch)
+        if adjustedRange.location != NSNotFound {
+            
+            bodyHtmls = bodyHtmls.stringByReplacingCharactersInRange(adjustedRange, withString: tag)
+            let currentPageNum = FolioReader.sharedInstance.readerCenter.currentPage.pageNumber
+            let resource = book.spine.spineReferences[currentPageNum-1].resource
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 1  //didfinishLoad時に行移動させるため
+            FolioReader.sharedInstance.readerCenter.currentPage.webView.alpha = 0
+            
+            
+            print("bodyHtmlsは\(bodyHtmls)")
+            
+    
+            //大元のhtml全体の<body></body>部分　を新しいものにリプレイス
+            
+            
+            //それを読み込む
+            //FolioReader.sharedInstance.readerCenter.currentPage.webView.loadHTMLString(htmls as String, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
+            
+            print("bodyHtmls is \(bodyHtmls)")
+        }
+        else {
+            print("item range not found")
+        }
+    }*/
+
     func tableView(table: UITableView, didSelectRowAtIndexPath indexPath:NSIndexPath) {
         print("tappした \(indexPath)")
         
@@ -139,8 +250,8 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
         let content = (self.html! as NSString).substringWithRange(item.range)
         let searchTagId = "search"
         
-    //正規表現検索+searchタグの挿入操作 をネイティブ側ではなく、JS側でやることでうまくいきそう
-    //もしくは以下のやり方
+        //正規表現検索+searchタグの挿入操作 をネイティブ側ではなく、JS側でやることでうまくいきそう
+        //もしくは以下のやり方
         self.dismissViewControllerAnimated(true, completion: nil)
         
         var htmls = (self.html! as NSString)
@@ -163,7 +274,7 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
             print("item range not found")
         }
     }
-
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
@@ -171,172 +282,3 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-var highlights: [Highlight]!
-
-override func viewDidLoad() {
-super.viewDidLoad()
-
-tableView.registerClass(UITableViewCell.self, forCellReuseIdentifier: reuseIdentifier)
-tableView.backgroundColor = isNight(readerConfig.nightModeBackground, UIColor.whiteColor())
-tableView.separatorColor = isNight(readerConfig.nightModeSeparatorColor, readerConfig.menuSeparatorColor)
-
-highlights = Highlight.allByBookId((kBookId as NSString).stringByDeletingPathExtension)
-title = readerConfig.localizedHighlightsTitle
-
-setCloseButton()
-}
-
-override func viewWillAppear(animated: Bool) {
-super.viewWillAppear(animated)
-configureNavBar()
-}
-
-func configureNavBar() {
-let navBackground = isNight(readerConfig.nightModeMenuBackground, UIColor.whiteColor())
-let tintColor = readerConfig.tintColor
-let navText = isNight(UIColor.whiteColor(), UIColor.blackColor())
-let font = UIFont(name: "Avenir-Light", size: 17)!
-setTranslucentNavigation(color: navBackground, tintColor: tintColor, titleColor: navText, andFont: font)
-}
-
-
-
-// MARK: - Table view data source
-
-override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
-return 1
-}
-
-override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-return highlights.count
-}
-
-override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-let cell = tableView.dequeueReusableCellWithIdentifier(reuseIdentifier, forIndexPath: indexPath)
-cell.backgroundColor = UIColor.clearColor()
-
-let highlight = highlights[indexPath.row]
-
-// Format date
-let dateFormatter = NSDateFormatter()
-dateFormatter.dateFormat = readerConfig.localizedHighlightsDateFormat
-let dateString = dateFormatter.stringFromDate(highlight.date)
-
-// Date
-var dateLabel: UILabel!
-if cell.contentView.viewWithTag(456) == nil {
-dateLabel = UILabel(frame: CGRect(x: 0, y: 0, width: view.frame.width-40, height: 16))
-dateLabel.tag = 456
-dateLabel.autoresizingMask = UIViewAutoresizing.FlexibleWidth
-dateLabel.font = UIFont(name: "Avenir-Medium", size: 12)
-cell.contentView.addSubview(dateLabel)
-} else {
-dateLabel = cell.contentView.viewWithTag(456) as! UILabel
-}
-
-dateLabel.text = dateString.uppercaseString
-dateLabel.textColor = isNight(UIColor(white: 5, alpha: 0.3), UIColor.lightGrayColor())
-dateLabel.frame = CGRect(x: 20, y: 20, width: view.frame.width-40, height: dateLabel.frame.height)
-
-// Text
-let cleanString = highlight.content.stripHtml().truncate(250, trailing: "...").stripLineBreaks()
-let text = NSMutableAttributedString(string: cleanString)
-let range = NSRange(location: 0, length: text.length)
-let paragraph = NSMutableParagraphStyle()
-paragraph.lineSpacing = 3
-let textColor = isNight(readerConfig.menuTextColor, UIColor.blackColor())
-
-text.addAttribute(NSParagraphStyleAttributeName, value: paragraph, range: range)
-text.addAttribute(NSFontAttributeName, value: UIFont(name: "Avenir-Light", size: 16)!, range: range)
-text.addAttribute(NSForegroundColorAttributeName, value: textColor, range: range)
-
-if highlight.type.integerValue == HighlightStyle.Underline.rawValue {
-text.addAttribute(NSBackgroundColorAttributeName, value: UIColor.clearColor(), range: range)
-text.addAttribute(NSUnderlineColorAttributeName, value: HighlightStyle.colorForStyle(highlight.type.integerValue, nightMode: FolioReader.sharedInstance.nightMode), range: range)
-text.addAttribute(NSUnderlineStyleAttributeName, value: NSNumber(integer: NSUnderlineStyle.StyleSingle.rawValue), range: range)
-} else {
-text.addAttribute(NSBackgroundColorAttributeName, value: HighlightStyle.colorForStyle(highlight.type.integerValue, nightMode: FolioReader.sharedInstance.nightMode), range: range)
-}
-
-// Text
-var highlightLabel: UILabel!
-if cell.contentView.viewWithTag(123) == nil {
-highlightLabel = UILabel(frame: CGRect(x: 0, y: 0, width: view.frame.width-40, height: 0))
-highlightLabel.tag = 123
-highlightLabel.autoresizingMask = UIViewAutoresizing.FlexibleWidth
-highlightLabel.numberOfLines = 0
-highlightLabel.textColor = UIColor.blackColor()
-cell.contentView.addSubview(highlightLabel)
-} else {
-highlightLabel = cell.contentView.viewWithTag(123) as! UILabel
-}
-
-highlightLabel.attributedText = text
-highlightLabel.sizeToFit()
-highlightLabel.frame = CGRect(x: 20, y: 46, width: view.frame.width-40, height: highlightLabel.frame.height)
-
-return cell
-}
-
-override func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
-let highlight = highlights[indexPath.row]
-
-let cleanString = highlight.content.stripHtml().truncate(250, trailing: "...").stripLineBreaks()
-let text = NSMutableAttributedString(string: cleanString)
-let range = NSRange(location: 0, length: text.length)
-let paragraph = NSMutableParagraphStyle()
-paragraph.lineSpacing = 3
-text.addAttribute(NSParagraphStyleAttributeName, value: paragraph, range: range)
-text.addAttribute(NSFontAttributeName, value: UIFont(name: "Avenir-Light", size: 16)!, range: range)
-
-let s = text.boundingRectWithSize(CGSize(width: view.frame.width-40, height: CGFloat.max),
-options: [NSStringDrawingOptions.UsesLineFragmentOrigin, NSStringDrawingOptions.UsesFontLeading],
-context: nil)
-
-return s.size.height + 66
-}
-
-// MARK: - Table view delegate
-
-override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
-let highlight = highlights[indexPath.row]
-
-FolioReader.sharedInstance.readerCenter.changePageWith(page: highlight.page.integerValue, andFragment: highlight.highlightId)
-
-dismissViewControllerAnimated(true, completion: nil)
-}
-
-override func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath) {
-if editingStyle == .Delete {
-let highlight = highlights[indexPath.row]
-
-if highlight.page == currentPageNumber {
-FRHighlight.removeById(highlight.highlightId) // Remove from HTML
-}
-
-Highlight.removeById(highlight.highlightId) // Remove from Core data
-highlights.removeAtIndex(indexPath.row)
-tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
-}
-}
-
-// MARK: - Handle rotation transition
-
-override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
-tableView.reloadData()
-}
-}*/

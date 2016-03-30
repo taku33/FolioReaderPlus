@@ -263,6 +263,13 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         return html
     }
     
+    func getHTMLBody()-> String? {
+        
+        let htmlBody = self.webView.js("getHTMLBody()")
+        
+        return htmlBody
+    }
+    
     // MARK: Gesture recognizer
     
     func gestureRecognizer(gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWithGestureRecognizer otherGestureRecognizer: UIGestureRecognizer) -> Bool {

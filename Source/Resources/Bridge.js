@@ -31,6 +31,11 @@ function getHTML() {
     return document.documentElement.outerHTML;
 }
 
+// Get HTML Body
+function getHTMLBody() {
+    return document.body.outerHTML;
+}
+
 // Class manipulation
 function hasClass(ele,cls) {
   return !!ele.className.match(new RegExp('(\\s|^)'+cls+'(\\s|$)'));
