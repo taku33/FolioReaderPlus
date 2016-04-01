@@ -255,7 +255,7 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         
         return true
     }
-    
+
     func getHTML()-> String? {
         
         let html = self.webView.js("getHTML()")
