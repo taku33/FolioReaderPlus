@@ -130,7 +130,7 @@ class FRHighlight: NSObject {
             }
             
             let highlight = FRHighlight()
-            highlight.id = id
+            highlight.id = id      //ランダム文字列
             highlight.type = HighlightStyle.styleForClass(str.substringWithRange(match.rangeAtIndex(1)))
             highlight.content = str.substringWithRange(match.rangeAtIndex(2))
             
@@ -146,6 +146,23 @@ class FRHighlight: NSObject {
             return highlight
         }
         return mapped.first
+    }
+    
+    static func makeBookMarkFRHighlight(id: String) -> FRHighlight? {
+        let highlight = FRHighlight()
+        highlight.id = id  //ランダム文字列
+        highlight.contentPre = FolioReader.sharedInstance.readerCenter.getCurrentChapterName()
+        
+        //これらは章単位でなくページ単位
+        let currentPage = FolioReader.sharedInstance.readerCenter.pageIndicatorView.currentPage
+        let currentTotalPages = FolioReader.sharedInstance.readerCenter.pageIndicatorView.totalPages
+        highlight.content = "\(currentPage)/\(currentTotalPages)"    //4/24など
+        highlight.contentPost = "\(currentPage)/\(currentTotalPages)"  //初めて保存する場合なのでcontentと同じ
+        
+        highlight.page = currentPageNumber
+        highlight.bookId = (kBookId as NSString).stringByDeletingPathExtension
+        
+        return highlight
     }
     
     static func removeById(highlightId: String) -> String? {

@@ -34,6 +34,7 @@ class FolioReaderMyNote: UIViewController, UITableViewDelegate, UITableViewDataS
         tableView.delegate = self
         self.view.addSubview(tableView)
         
+        //テキストハイライトとブックマークの両方とも全て取得
         highlights = Highlight.allByBookId((kBookId as NSString).stringByDeletingPathExtension)
         print("highlightsは \(highlights)")
         title = readerConfig.localizedHighlightsTitle
@@ -100,7 +101,33 @@ class FolioReaderMyNote: UIViewController, UITableViewDelegate, UITableViewDataS
         dateLabel.frame = CGRect(x: 20, y: 20, width: view.frame.width-40, height: dateLabel.frame.height)
         
         // Make Highlight Text
-        let cleanHighlightString = highlight.content.stripHtml().truncate(250, trailing: "...").stripLineBreaks()  //最大で250文字まで表示
+        let cleanHighlightString:String
+        if(highlight.type != nil){  //テキストハイライトの場合
+            cleanHighlightString = highlight.content.stripHtml().truncate(250, trailing: "...").stripLineBreaks()  //最大で250文字まで表示
+        }else{
+            print("ブックマークは \(highlight)")
+            let contentPostArr = highlight.contentPost.componentsSeparatedByString("/")
+            let currentPageInDB = contentPostArr[0]  //(変換後の)分子
+            let totalPagesInDB = contentPostArr[1]   //(変換後の)分母
+
+            //これが通らない..
+            //let theIndexPath = NSIndexPath(forRow: Int(highlight.page), inSection: 0)
+            //let theCell:UICollectionViewCell! = FolioReader.sharedInstance.readerCenter.collectionView.cellForItemAtIndexPath(theIndexPath)
+            //as! FolioReaderPage
+            //let theTotalPages = Int(ceil(theCell.webView.scrollView.contentSize.height/pageHeight))
+            
+            /*if(Int(totalPagesInDB) == FolioReader.sharedInstance.readerCenter.pageIndicatorView.totalPages){
+                let  = "\(currentPageInDB) : \(highlight.contentPre)"  //ページ数:章名
+            }else{
+                //double型に一度変換して四捨五入?
+                let adjustedPage = round(Double(currentPageInDB)!*(Double(FolioReader.sharedInstance.readerCenter.pageIndicatorView.totalPages)/Double(totalPagesInDB)!))
+                let adjustedContent = "\(Int(adjustedPage))/\(FolioReader.sharedInstance.readerCenter.totalPages)"
+                //CoreData更新
+                Highlight.updateContentPostById(highlight.highlightId, adjustedContent: adjustedContent)
+            }*/
+            
+            cleanHighlightString = "\(currentPageInDB)page/\(totalPagesInDB)pages : \(highlight.contentPre)".truncate(100, trailing: "...").stripLineBreaks()
+        }
         let text = NSMutableAttributedString(string: cleanHighlightString)
         let range = NSRange(location: 0, length: text.length)
         let paragraph = NSMutableParagraphStyle()
@@ -110,13 +137,14 @@ class FolioReaderMyNote: UIViewController, UITableViewDelegate, UITableViewDataS
         text.addAttribute(NSParagraphStyleAttributeName, value: paragraph, range: range)
         text.addAttribute(NSFontAttributeName, value: UIFont(name: "Avenir-Light", size: 16)!, range: range)
         text.addAttribute(NSForegroundColorAttributeName, value: textColor, range: range)
-        
-        if highlight.type.integerValue == HighlightStyle.Underline.rawValue {
-            text.addAttribute(NSBackgroundColorAttributeName, value: UIColor.clearColor(), range: range)
-            text.addAttribute(NSUnderlineColorAttributeName, value: HighlightStyle.colorForStyle(highlight.type.integerValue, nightMode: FolioReader.sharedInstance.nightMode), range: range)
-            text.addAttribute(NSUnderlineStyleAttributeName, value: NSNumber(integer: NSUnderlineStyle.StyleSingle.rawValue), range: range)
-        } else {
-            text.addAttribute(NSBackgroundColorAttributeName, value: HighlightStyle.colorForStyle(highlight.type.integerValue, nightMode: FolioReader.sharedInstance.nightMode), range: range)
+        if(highlight.type != nil){
+            if highlight.type!.integerValue == HighlightStyle.Underline.rawValue {
+                text.addAttribute(NSBackgroundColorAttributeName, value: UIColor.clearColor(), range: range)
+                text.addAttribute(NSUnderlineColorAttributeName, value: HighlightStyle.colorForStyle(highlight.type!.integerValue, nightMode: FolioReader.sharedInstance.nightMode), range: range)
+                text.addAttribute(NSUnderlineStyleAttributeName, value: NSNumber(integer: NSUnderlineStyle.StyleSingle.rawValue), range: range)
+            } else {
+                text.addAttribute(NSBackgroundColorAttributeName, value: HighlightStyle.colorForStyle(highlight.type!.integerValue, nightMode: FolioReader.sharedInstance.nightMode), range: range)
+            }
         }
         
         // Add Highlight Text
@@ -170,23 +198,27 @@ class FolioReaderMyNote: UIViewController, UITableViewDelegate, UITableViewDataS
     
     func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
         let highlight = highlights[indexPath.row]
-        
-        let cleanString = highlight.content.stripHtml().truncate(250, trailing: "...").stripLineBreaks()
+        let cleanString:String
+        if(highlight.type != nil){
+            cleanString = highlight.content.stripHtml().truncate(250, trailing: "...").stripLineBreaks()
+        }else{
+            let contentPostArr = highlight.contentPost.componentsSeparatedByString("/")
+            let currentPageInDB = contentPostArr[0]
+            let totalPagesInDB = contentPostArr[1]
+            cleanString = "\(currentPageInDB)page/\(totalPagesInDB)pages : \(highlight.contentPre)".truncate(100, trailing: "...").stripLineBreaks()
+        }
         let text = NSMutableAttributedString(string: cleanString)
         let range = NSRange(location: 0, length: text.length)
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 3
         text.addAttribute(NSParagraphStyleAttributeName, value: paragraph, range: range)
         text.addAttribute(NSFontAttributeName, value: UIFont(name: "Avenir-Light", size: 16)!, range: range)
-        
         let highlightTextBoundingRect = text.boundingRectWithSize(CGSize(width: view.frame.width-40, height: CGFloat.max),
             options: [NSStringDrawingOptions.UsesLineFragmentOrigin, NSStringDrawingOptions.UsesFontLeading],
             context: nil)
         
-        
         let memoText:NSMutableAttributedString?
         var memoTextBoundingRectHeight:CGFloat = 0
-        
         //メモがあれば その分の高さを追加
         if(highlight.memo != nil){
             let cleanMemoString = highlight.memo!.truncate(150, trailing: "...").stripLineBreaks()  //最大で150文字まで表示
@@ -204,7 +236,7 @@ class FolioReaderMyNote: UIViewController, UITableViewDelegate, UITableViewDataS
             memoTextBoundingRectHeight = memoTextBoundingRect.size.height
         }
         
-        return highlightTextBoundingRect.size.height + memoTextBoundingRectHeight + 66  //66はDateの部分
+        return 66 + highlightTextBoundingRect.size.height + memoTextBoundingRectHeight  //66はDateの部分
     }
     
     // MARK: - Table view delegate  //tap gesture
@@ -212,40 +244,46 @@ class FolioReaderMyNote: UIViewController, UITableViewDelegate, UITableViewDataS
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
         let highlight = highlights[indexPath.row]
 
-        FolioReader.sharedInstance.readerCenter.changePageWith(page: highlight.page.integerValue, andFragment: highlight.highlightId)
+        if(highlight.type != nil){
+            FolioReader.sharedInstance.readerCenter.changePageWith(page: highlight.page.integerValue, andFragment: highlight.highlightId)
+        }else{
+            FolioReader.sharedInstance.readerCenter.changePageWith(page: highlight.page.integerValue, andFragment: highlight.contentPost, andBookMark:true)
+            
+            //バグ修正:Epub file does not exist.を直す
+            
+        }
         dismissViewControllerAnimated(true, completion: nil)
     }
 
     func tableView(tableView: UITableView, editActionsForRowAtIndexPath indexPath: NSIndexPath) -> [UITableViewRowAction]? {
         
-        // メモをタップ
+        // メモする をタップ
         let edit = UITableViewRowAction(style: .Normal, title: "Memo") {
             (action, indexPath) in
             
-            //webview内でのロングタップによるメモの表示および更新 はどうする?
+            //機能追加:webview内でのロングタップによるメモの表示および更新
             //→とりあえずMyNoteからのメモの更新だけにする
             
             self.editingHighlight = self.highlights[indexPath.row]
          
             self.presentViewController(self.folioReaderMemo, animated: true, completion: nil)
         }
-        
         edit.backgroundColor = UIColor.greenColor()
         
-        // 削除をタップ
+        // 削除する をタップ
         let del = UITableViewRowAction(style: .Default, title: "Delete") {
             (action, indexPath) in
             
             let highlight = self.highlights[indexPath.row]
-            if highlight.page == currentPageNumber {
-                FRHighlight.removeById(highlight.highlightId) // Remove from HTML
+            if(highlight.type != nil){  //テキストハイライトなら
+                if highlight.page == currentPageNumber {
+                    FRHighlight.removeById(highlight.highlightId) // Remove from HTML
+                }
             }
-            
             Highlight.removeById(highlight.highlightId) // Remove from Core data
             self.highlights.removeAtIndex(indexPath.row)
             tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
         }
-        
         del.backgroundColor = UIColor.redColor()
         
         return [edit, del]

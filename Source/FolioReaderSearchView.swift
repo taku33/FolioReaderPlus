@@ -48,9 +48,36 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     func searchBarSearchButtonClicked(searchBar: UISearchBar){   //protocolの実装
         print("searchtextは \(search!.text!)")
         self.search?.userInteractionEnabled = false  //これしないと、以下全ての実行が2回呼ばれてしまう
-        //self.search?.hidden = true
+        
+    //本1冊検索モードなら
+        //最初に本1冊内の全章をCoreDataに保存しておく
+        //アプリ起動後に保存？非同期？
+        /*BookStr エンティティのAttributesは
+        bookId(String)
+        chap1(String)  第1章のhtml
+        chap2(String)
+         ...
+        chap16(String)*/
+        
+        //BookStr.swift、FRBookStr.swiftを作成？
+        
+        
+        
+        //そこから検索文字列でCoreDataを検索
+        //第1章から順に、章単位で検索をしていく
+        //とりあえず途中10件まで表示?
+        
+        //この場合、そもそもCoreDataは不要？？
+        
+        
+    
+        
+
+    //章検索モードなら
+        //現在の章だけを検索する
+        
         //機能追加: 何度も検索を可能にする、キーボードを隠せて下の方の検索結果も見えるように
-        //機能追加:検索後の行移動し、画面タップでハイライト消すのは uiviewを一時生成してbegantouchで実行？
+        //機能追加:検索後に画面タップでハイライト消すのは uiviewを一時生成してbegantouchで実行？
         
         let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"  //それぞれの前後の文字列も確保?
         //"\(search!.text!)"
@@ -110,8 +137,8 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
         let searchAlert = UIAlertView()
         searchAlert.delegate = self
         searchAlert.title = ""
-        searchAlert.message = "検索結果がありません"
-        searchAlert.addButtonWithTitle("了解")
+        searchAlert.message = "No Result"
+        searchAlert.addButtonWithTitle("OK")
         searchAlert.show()
     }
 

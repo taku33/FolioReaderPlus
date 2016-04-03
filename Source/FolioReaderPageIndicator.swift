@@ -14,7 +14,7 @@ class FolioReaderPageIndicator: UIView {
     var totalMinutes: Int!
     var totalPages: Int!
     var currentPage: Int = 1 {
-        didSet { self.reloadViewWithPage(self.currentPage) }
+        didSet { self.reloadViewWithPage(self.currentPage) }  //プロパティセット後、実行される
     }
     
     override init(frame: CGRect) {

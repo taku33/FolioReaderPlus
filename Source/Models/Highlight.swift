@@ -19,7 +19,7 @@ class Highlight: NSManagedObject {
     @NSManaged var date: NSDate
     @NSManaged var highlightId: String
     @NSManaged var page: NSNumber
-    @NSManaged var type: NSNumber
+    @NSManaged var type: NSNumber?
     @NSManaged var memo: String?
 
 }
@@ -56,7 +56,7 @@ extension Highlight {
             highlight!.contentPre = object.contentPre
             highlight!.contentPost = object.contentPost
             highlight!.date = NSDate()
-            highlight!.highlightId = object.id
+            highlight!.highlightId = object.id  //ランダム文字列
             highlight!.page = object.page
             highlight!.type = object.type.hashValue
             //highlight!.memo = nil
@@ -75,29 +75,19 @@ extension Highlight {
         }
     }
     
-    /*static func saveBookmark(){    //(object: FRHighlight, completion: Completion?) {
-        var highlight: Highlight?
+    static func saveBookMark(object: FRHighlight, completion: Completion?){
+        var bookMark: Highlight?
+        bookMark = NSEntityDescription.insertNewObjectForEntityForName("Highlight", inManagedObjectContext: coreDataManager.managedObjectContext) as? Highlight
+        coreDataManager.saveContext()
         
-       
-        if highlight != nil {
-            highlight!.content = object.content
-            highlight!.contentPre = object.contentPre
-            highlight!.contentPost = object.contentPost
-            highlight!.date = object.date
-            highlight!.type = object.type.hashValue
-        } else {
-            highlight = NSEntityDescription.insertNewObjectForEntityForName("Highlight", inManagedObjectContext: coreDataManager.managedObjectContext) as? Highlight
-            coreDataManager.saveContext()
-            
-            highlight!.bookId = object.bookId
-            highlight!.content = object.content
-            highlight!.contentPre = object.contentPre
-            highlight!.contentPost = object.contentPost
-            highlight!.date = NSDate()
-            highlight!.highlightId = object.id
-            highlight!.page = object.page
-            highlight!.type = object.type.hashValue
-        }
+        bookMark!.bookId = object.bookId
+        bookMark!.content = object.content
+        bookMark!.contentPre = object.contentPre
+        bookMark!.contentPost = object.contentPost
+        bookMark!.date = NSDate()
+        bookMark!.highlightId = object.id
+        bookMark!.page = object.page
+        bookMark!.type = nil
         
         // Save
         do {
@@ -110,7 +100,7 @@ extension Highlight {
                 completion!(error: error)
             }
         }
-    }*/
+    }
     
     static func removeById(highlightId: String) {
         var highlight: Highlight?
@@ -138,7 +128,7 @@ extension Highlight {
             highlight?.type = type.hashValue
             coreDataManager.saveContext()
         } catch let error as NSError {
-            print("Error on update highlight: \(error)")
+            print("Error on update highlightStyle: \(error)")
         }
     }
     
@@ -153,13 +143,28 @@ extension Highlight {
             highlight!.memo = newMemo
             coreDataManager.saveContext()
         } catch let error as NSError {
-            print("Error on update highlight: \(error)")
+            print("Error on update Memo: \(error)")
+        }
+    }
+    
+    static func updateContentPostById(highlightId: String, adjustedContent: String) {  //ページ位置を計算調整したものを更新
+        var highlight: Highlight?
+        
+        do {
+            let fetchRequest = NSFetchRequest(entityName: "Highlight")
+            fetchRequest.predicate = NSPredicate(format:"highlightId = %@", highlightId)
+            
+            highlight = try coreDataManager.managedObjectContext.executeFetchRequest(fetchRequest).last as? Highlight
+            highlight!.contentPost = adjustedContent
+            coreDataManager.saveContext()
+        } catch let error as NSError {
+            print("Error on update ContentPost: \(error)")
         }
     }
     
     static func allByBookId(bookId: String, andPage page: NSNumber? = nil) -> [Highlight] {
         var highlights: [Highlight]?
-        let predicate = (page != nil) ? NSPredicate(format: "bookId = %@ && page = %@", bookId, page!) : NSPredicate(format: "bookId = %@", bookId)
+        let predicate = (page != nil) ? NSPredicate(format: "bookId = %@ && page = %@ && type != nil", bookId, page!) : NSPredicate(format: "bookId = %@", bookId)
         
         do {
             let fetchRequest = NSFetchRequest(entityName: "Highlight")
@@ -173,4 +178,20 @@ extension Highlight {
             return [Highlight]()
         }
     }
+    
+    static func allBookMarkByBookId(bookId: String, andPage page: NSNumber? = nil) -> [Highlight] {
+        var bookMarks: [Highlight]?
+        let predicate = (page != nil) ? NSPredicate(format: "bookId = %@ && page = %@ && type = nil", bookId, page!) : NSPredicate(format: "bookId = %@ && type = nil", bookId)
+        
+        do {
+            let fetchRequest = NSFetchRequest(entityName: "Highlight")
+            fetchRequest.predicate = predicate
+            
+            bookMarks = try coreDataManager.managedObjectContext.executeFetchRequest(fetchRequest) as? [Highlight]
+            return bookMarks!
+        } catch {
+            return [Highlight]()
+        }
+    }
 }
+

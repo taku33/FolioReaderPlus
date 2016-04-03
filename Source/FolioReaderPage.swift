@@ -88,12 +88,13 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         
         var html = (string as NSString)
         
-        // Restore highlights
-        let highlights = Highlight.allByBookId((kBookId as NSString).stringByDeletingPathExtension, andPage: pageNumber)
+        // Restore highlights (except bookmark)
+        let highlights = Highlight.allByBookId((kBookId as NSString).stringByDeletingPathExtension, andPage:pageNumber)
         
         if highlights.count > 0 {
             for item in highlights {
-                let style = HighlightStyle.classForStyle(item.type.integerValue)
+                
+                let style = HighlightStyle.classForStyle(item.type!.integerValue)
                 let tag = "<highlight id=\"\(item.highlightId)\" onclick=\"callHighlightURL(this);\" class=\"\(style)\">\(item.content)</highlight>"
                 let locator = item.contentPre + item.content + item.contentPost
                 let range: NSRange = html.rangeOfString(locator, options: .LiteralSearch)
@@ -214,7 +215,7 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
                 if hrefPage == pageNumber {
                     // Handle internal #anchor
                     if anchorFromURL != nil {
-                        handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true)
+                        handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true, andBookMark: false)
                         return false
                     }
                 } else {
@@ -229,7 +230,7 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
             
             // Handle internal #anchor
             if anchorFromURL != nil {
-                handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true)
+                handleAnchor(anchorFromURL!, avoidBeginningAnchors: false, animating: true, andBookMark: false)
                 return false
             }
             
@@ -405,19 +406,44 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         }
     }
     
-    // anchor は hilight id など。
-    func handleAnchor(anchor: String,  avoidBeginningAnchors: Bool, animating: Bool) {
+    // anchor は hilight id 、contentPost など。
+    func handleAnchor(anchor: String,  avoidBeginningAnchors: Bool, animating: Bool, andBookMark bookMark: Bool) {
         if !anchor.isEmpty {
-            if let offset = getAnchorOffset(anchor) {
-                print("offsetは\(offset)")
-                
-                let isBeginning = CGFloat((offset as NSString).floatValue) > self.frame.height/2
-                print("self.frame.heightは\(self.frame.height)")  //スマホ画面サイズ 667?
-                
-                if !avoidBeginningAnchors {   //章のすぐはじめ辺りの場合も行単位で移動させたいなら
-                    scrollPageToOffset(offset, animating: animating)
-                } else if avoidBeginningAnchors && isBeginning {
-                    scrollPageToOffset(offset, animating: animating)
+            if(bookMark != true){
+                if let offset = getAnchorOffset(anchor) {
+                    print("offsetは\(offset)")
+                    
+                    let isBeginning = CGFloat((offset as NSString).floatValue) > self.frame.height/2
+                    print("self.frame.heightは\(self.frame.height)")  //スマホ画面サイズ 667?
+                    
+                    if !avoidBeginningAnchors {   //章のすぐはじめ辺りの場合も行単位で移動させたいなら
+                        scrollPageToOffset(offset, animating: animating)
+                    } else if avoidBeginningAnchors && isBeginning {
+                        scrollPageToOffset(offset, animating: animating)
+                    }
+                }
+            }else{  //ブックマークへ移動
+                let contentPostArr = anchor.componentsSeparatedByString("/")
+                let currentPageInDB = contentPostArr[0]  //変換後の分子
+                let totalPagesInDB = contentPostArr[1]   //変換後の分母
+                if(Int(totalPagesInDB) == FolioReader.sharedInstance.readerCenter.pageIndicatorView.totalPages){
+                    //currentPageInDBにそのまま移動
+                    self.webView.scrollView.contentOffset.y = CGFloat(Int(pageHeight)*(Int(currentPageInDB)! - 1))
+                }else{
+                    let double = Double(currentPageInDB)!*(Double(FolioReader.sharedInstance.readerCenter.pageIndicatorView.totalPages)/Double(totalPagesInDB)!)
+                    let adjustedPage:Double
+                    if(double < 1){
+                        //1にする(切り上げ)
+                        adjustedPage = ceil(double);
+                    }else{
+                        //四捨五入
+                        adjustedPage = round(double)
+                    }
+                    self.webView.scrollView.contentOffset.y = CGFloat(Int(pageHeight)*(Int(adjustedPage) - 1))
+                    
+                    //CoreData更新?
+                    //let adjustedContent = "\(Int(adjustedPage))/\(self.pageIndicatorView.totalPages)"
+                    //Highlight.updateContentPostById(item.highlightId, adjustedContent: adjustedContent)
                 }
             }
         }
@@ -430,17 +456,11 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
     
     func handleSimpleBrowseNext() {
         if(webView.scrollView.contentSize.height > webView.scrollView.contentOffset.y){
-            webView.scrollView.contentOffset.y += pageHeight-30  //下部の(minutes、pages left)ラベルの大きさも考慮
+            webView.scrollView.contentOffset.y += pageHeight-30  //下部ラベルの大きさも考慮
         }else{
-            let currentIndexPath = FolioReader.sharedInstance.readerCenter.getCurrentIndexPath()
-            
-            print("totalpagesは\(FolioReader.sharedInstance.readerCenter.totalPages)")
-            print("currentIndexPath.rowは\(currentIndexPath.row)")
-            
-            //collectionview cell(章)を1つ次に進める(あるなら)
-            if(FolioReader.sharedInstance.readerCenter.totalPages > currentIndexPath.row+1){
-                let nextIndexPath = NSIndexPath(forRow: currentIndexPath.row+1, inSection: 0)
-                    FolioReader.sharedInstance.readerCenter.collectionView.scrollToItemAtIndexPath(nextIndexPath, atScrollPosition: .Top, animated: false)
+            //collectionview cell(章)を1つ次に進める
+            FolioReader.sharedInstance.readerCenter.changePageToNext{ () -> Void in
+                
             }
         }
     }
@@ -449,51 +469,11 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         if(0 < webView.scrollView.contentOffset.y){
             webView.scrollView.contentOffset.y -= pageHeight-30
         }else{
-            let currentIndexPath = FolioReader.sharedInstance.readerCenter.getCurrentIndexPath()
-            
-            //collectionview cell(章)を1つ前に戻す(あるなら)
-            if(currentIndexPath.row != 0){
+            //collectionview cell(章)を1つ前に戻す
+            FolioReader.sharedInstance.readerCenter.changePageToPrevious{ () -> Void in
                 
-                  self.scrollToPreviousCell() { error in
-                
-                    /*
-                    print("1つ前の章の底部分へ移動")
-                    let bottomOffset = CGPointMake(0, FolioReader.sharedInstance.readerCenter.currentPage.webView.scrollView.contentSize.height - FolioReader.sharedInstance.readerCenter.currentPage.webView.scrollView.bounds.height)
-                    
-                    if bottomOffset.y >= 0 {
-                      //let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * Double(NSEC_PER_SEC)))
-                      //dispatch_after(delayTime, dispatch_get_main_queue()) {
-                        print("bottomOffset is \(bottomOffset)")
-                        dispatch_async(dispatch_get_main_queue(), {
-                            FolioReader.sharedInstance.readerCenter.currentPage.webView.scrollView.setContentOffset(bottomOffset, animated: false)
-                        })
-                      //}
-                    }
-                    */
-                    
-                    return
-                }
             }
-            
-            //バグ修正: pages left、minutesを直す
-            
-            
         }
-    }
-    
-    /*private func scrollToPreviousCell(completionHandler: (NSError?)->()) {
-        scrollToPreviousCellRequest(completionHandler)
-    }*/
-    
-    private func scrollToPreviousCell(completionHandler: (NSError?) -> ()){
-        
-        let currentIndexPath = FolioReader.sharedInstance.readerCenter.getCurrentIndexPath()
-        let previousIndexPath = NSIndexPath(forRow: currentIndexPath.row-1, inSection: 0)
-        FolioReader.sharedInstance.readerCenter.collectionView.scrollToItemAtIndexPath(previousIndexPath, atScrollPosition: .Bottom, animated: false)
-        
-        print("コンプレーションパターン")
-        completionHandler(nil)
-        
     }
     
     override func canPerformAction(action: Selector, withSender sender: AnyObject?) -> Bool {
@@ -605,7 +585,7 @@ extension UIWebView {
             FRHighlight.removeById("search") // Remove from HTML
             FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 0
         }
-        
+        //ランダム文字列(id)とユーザーが選択したテキストの座標が返される
         let highlightAndReturn = js("highlightString('\(HighlightStyle.classForStyle(FolioReader.sharedInstance.currentHighlightStyle))')")
         let jsonData = highlightAndReturn?.dataUsingEncoding(NSUTF8StringEncoding)
         
@@ -615,7 +595,7 @@ extension UIWebView {
             
             print("dicは\(dic)")
             
-            let rect = CGRectFromString(dic["rect"]!)
+            let rect = CGRectFromString(dic["rect"]!)  //座標
             
             // Force remove text selection
             userInteractionEnabled = false
@@ -626,9 +606,8 @@ extension UIWebView {
             
             // Persist
             let html = js("getHTML()")
-            
             //htmlの中で特定のハイライトスタイルを検索?
-            if let highlight = FRHighlight.matchHighlight(html, andId: dic["id"]!) {  //
+            if let highlight = FRHighlight.matchHighlight(html, andId: dic["id"]!) { //dic["id"]はランダム文字列
                 Highlight.persistHighlight(highlight, completion: nil)   //それを投げてDB保存
             }
         } catch {

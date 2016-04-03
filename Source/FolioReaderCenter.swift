@@ -227,13 +227,14 @@ class ScrollScrubber: NSObject, UIScrollViewDelegate {
 
 
 
-class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, FolioPageDelegate, FolioReaderContainerDelegate {
+class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, FolioPageDelegate, FolioReaderContainerDelegate,UIAlertViewDelegate {
     
     var collectionView: UICollectionView!
     var loadingView: UIActivityIndicatorView!
     var pages: [String]!
     var totalPages: Int!
     var tempFragment: String?
+    var tempBookMark: Bool?
     var currentPage: FolioReaderPage!      //currentPageはFolioReaderPage(章単位?)である
     var folioReaderContainer: FolioReaderContainer!
     var animator: ZFModalTransitionAnimator!
@@ -431,74 +432,86 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         presentPlayerMenu()
     }
     
-    
-    //左上タップで、ブックマークを追加or削除 → その度にアラート表示?
-    
-    //ブックマークを追加する場合
+//左上タップでブックマークを追加
     func addBookmark(sender: UIBarButtonItem) {
-    
+        //バグ修正:simple mode時に限り、とりあえず右側のコントロールバーを操作不能にする？
         
-        
-        let webView:UIWebView? = UIWebView()
-        
-        //ここのページの真ん中の絶対位置、最初10行(正規表現でhtmlを検索して取り出す？)、時刻 をDBに保存(coredataの各要素として)
-        let highlightAndReturn = webView!.js("highlightString('\(HighlightStyle.classForStyle(FolioReader.sharedInstance.currentHighlightStyle))')")
-        
-        print("yees  \(highlightAndReturn)")
-        
-        let jsonData:NSData? = highlightAndReturn?.dataUsingEncoding(NSUTF8StringEncoding)
-        
-        do {
-            let json = try NSJSONSerialization.JSONObjectWithData(jsonData!, options: []) as! NSArray
-            let dic = json.firstObject as! [String: String]
-            
-            print("dicは\(dic)")
-            
-            
-            let html = webView!.js("getHTML()")  //これだと取れない...
-            
-            if let highlight = FRHighlight.matchHighlight(html, andId: dic["id"]!) {   //idはランダム文字列
-                Highlight.persistHighlight(highlight, completion: nil)   //DB保存など
+        let bookMarks = Highlight.allBookMarkByBookId((kBookId as NSString).stringByDeletingPathExtension, andPage:currentPageNumber)
+        if bookMarks.count > 0 {
+            var i = 0
+            for item in bookMarks {
+                let contentPostArr = item.contentPost.componentsSeparatedByString("/")
+                let currentPageInDB = contentPostArr[0]  //(変換後の)分子
+                let totalPagesInDB = contentPostArr[1]   //(変換後の)分母
+                if(Int(totalPagesInDB) == self.pageIndicatorView.totalPages){
+                    if(Int(currentPageInDB) == self.pageIndicatorView.currentPage){                        break;
+                    }else{
+                        i++
+                    }
+                }else{
+                    let double = Double(currentPageInDB)!*(Double(self.pageIndicatorView.totalPages)/Double(totalPagesInDB)!)
+                    let adjustedPage:Double
+                    if(double < 1){
+                        //1にする(切り上げ)
+                        adjustedPage = ceil(double);
+                    }else{
+                        //四捨五入
+                        adjustedPage = round(double)
+                    }
+                    
+                    //let adjustedContent = "\(Int(adjustedPage))/\(self.pageIndicatorView.totalPages)"
+                    //CoreData更新?
+                    //Highlight.updateContentPostById(item.highlightId, adjustedContent: adjustedContent)
+                    
+                    if(Int(adjustedPage) == self.pageIndicatorView.currentPage){
+                        break;
+                    }else{
+                        i++
+                    }
+                }
             }
-        
-        } catch {
-            print("Could not receive JSON")
+            if(i == bookMarks.count){
+                self.saveBookMark()
+            }else{
+                self.showBookMarkAlert("already marked") //すでに保存済み
+            }
+        }else{
+            self.saveBookMark()
         }
-        
-        
-        
-        //Highlight.saveBookmark()
-        
-        
-        
-        
-        
-        //DBから取り出してMyNoteにブックマークを表示
-        
-        
-        //MyNoteのブックマークをタップするとその位置に移動(行間を変えているとおかしくなる？)
-        
-        
-        //ブックマークアイコンの色の表示をオフからオンに変更させる
-        
-        
+    }
+
+    func saveBookMark(){
+        self.showBookMarkAlert("book marked!") //今保存完了
+        //Highlightをそのまま使用しCoreData保存
+        /*bookMarkのAttributesは以下。
+        bookId
+        date
+        highlightId  ランダム文字列？
+        page  (章)
+        contentPre  chap1  (章名)
+        content     4/24   (初期保存時のページ位置)
+        contentPost 4/25 (変換後のページ位置)　　　(小数点第一位を四捨五入したもの？)
+        memo
+        type 　これはnil(テキストハイライトと区別をつけるため)
+        */
+        //これは初めて保存する場合。
+        if let bookMarkFRHighlight = FRHighlight.makeBookMarkFRHighlight(self.getGuid()){
+            Highlight.saveBookMark(bookMarkFRHighlight, completion: nil)   //それをDB保存
+        }
     }
     
-    //ブックマークを削除する場合
-    func removeBookmark(sender: UIBarButtonItem) {
-     
-        //DBから削除
-        
-        
-        //ブックマークアイコンの色の表示をオンからオフに変更させる
-        
-        
+    func getGuid()-> String! {
+        return self.currentPage.webView.js("guid()")!
     }
     
-    
-    
-    
-    
+    func showBookMarkAlert(message:String){
+        let bookMarkAlert = UIAlertView()
+        bookMarkAlert.delegate = self
+        bookMarkAlert.title = ""
+        bookMarkAlert.message = message
+        bookMarkAlert.addButtonWithTitle("OK")
+        bookMarkAlert.show()
+    }
     
     // MARK: Toggle menu
     
@@ -743,12 +756,12 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         if (completion != nil) { completion!() }
     }
     
-    //残り何ページ(pages left)かを判定
+    //現在のページ数(合計数、現在位置)を判定
     func pagesForCurrentPage(page: FolioReaderPage?) {
         if let page = page {
             pageIndicatorView.totalPages = Int(ceil(page.webView.scrollView.contentSize.height/pageHeight))
             let webViewPage = pageForOffset(currentPage.webView.scrollView.contentOffset.y, pageHeight: pageHeight)
-            pageIndicatorView.currentPage = webViewPage
+            pageIndicatorView.currentPage = webViewPage //これがセットされる度に、FolioReaderPageIndicatorでdidSetが呼ばれる
         }
     }
     
@@ -808,17 +821,24 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
     }
     
     // fragment は hilight id など。
-    func changePageWith(page page: Int, andFragment fragment: String, animated: Bool = false, completion: (() -> Void)? = nil) {
+    func changePageWith(page page: Int, andFragment fragment: String, animated: Bool = false, andBookMark bookMark: Bool = false, completion: (() -> Void)? = nil) {
         
         print("pageは..\(page)")
         
         if currentPageNumber == page {
             if fragment != "" && currentPage != nil {
-                currentPage.handleAnchor(fragment, avoidBeginningAnchors: false, animating: animated) //avoidBeginningAnchors: trueだと、検索結果からの行移動ができない場合があるためfalse
+                if(bookMark == true){
+                    currentPage.handleAnchor(fragment, avoidBeginningAnchors: false, animating: animated, andBookMark: true)
+                }else{
+                    currentPage.handleAnchor(fragment, avoidBeginningAnchors: false, animating: animated, andBookMark: false) //avoidBeginningAnchors: trueだと、検索結果からの行移動ができない場合があるためfalse
+                }
                 if (completion != nil) { completion!() }
             }
         } else {
-            tempFragment = fragment  //これによりpageDidLoad時に行単位で移動
+            if(bookMark == true){
+                tempBookMark = true
+            }
+            tempFragment = fragment  //これにより章単位で移動後、pageDidLoad時に行単位で移動される
             changePageWith(page: page, animated: animated, completion: { () -> Void in
                 self.updateCurrentPage({ () -> Void in
                     if (completion != nil) { completion!() }
@@ -1091,7 +1111,13 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         
         // Go to fragment if needed
         if let fragment = tempFragment where fragment != "" && currentPage != nil {
-            currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animating: true)
+            
+            if(tempBookMark != true){
+                currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animating: true, andBookMark: false)
+            }else{
+                currentPage.handleAnchor(fragment, avoidBeginningAnchors: true, animating: true, andBookMark: true)
+                tempBookMark = nil
+            }
             tempFragment = nil
         }
     }
@@ -1133,7 +1159,7 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         scrollDirection = scrollView.contentOffset.y < pointNow.y ? .Down : .Up
     }
     
-    func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
+    func scrollViewDidEndDecelerating(scrollView: UIScrollView) {  //減速終了後
         isScrolling = false
         
         if scrollView is UICollectionView {
@@ -1174,7 +1200,7 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         // Move to #fragment
         if tempReference != nil {
             if tempReference!.fragmentID != "" && currentPage != nil {
-                currentPage.handleAnchor(tempReference!.fragmentID!, avoidBeginningAnchors: true, animating: true)
+                currentPage.handleAnchor(tempReference!.fragmentID!, avoidBeginningAnchors: true, animating: true, andBookMark: false)   //これでいい？？
             }
             tempReference = nil
         }
