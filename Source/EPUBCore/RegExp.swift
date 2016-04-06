@@ -38,7 +38,7 @@ class RegExp {
 }
 
 
-/* 使い方
+/* how to use
 let pattern = "http://([a-zA-Z0-9]|.)+"
 let str:String = "銘柄コード:1557,銘柄名:SPDR S&P500 ETF TRUST板価格:25270.0,板数量:10000にいびつな板(寄与率:81.20178%)を検出しました。http://oreore.com/servlets/Action?SRC=1234"
 Regexp(pattern).isMatch(str) //マッチした結果　ここではtrue

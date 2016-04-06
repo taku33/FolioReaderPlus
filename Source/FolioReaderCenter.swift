@@ -545,8 +545,9 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         // Configure the cell
         let resource = book.spine.spineReferences[indexPath.row].resource
         var html = try? String(contentsOfFile: resource.fullHref, encoding: NSUTF8StringEncoding)
+        print("cellのhtmlは\(html)")
+        
         let mediaOverlayStyleColors = "\"\(readerConfig.mediaOverlayColor.hexString(false))\", \"\(readerConfig.mediaOverlayColor.highlightColor().hexString(false))\""
-
         // Inject CSS
         let jsFilePath = NSBundle.frameworkBundle().pathForResource("Bridge", ofType: "js")
         let cssFilePath = NSBundle.frameworkBundle().pathForResource("Style", ofType: "css")
@@ -629,7 +630,6 @@ class FolioReaderCenter: UIViewController, UICollectionViewDelegate, UICollectio
         }
         
         html = html?.stringByReplacingOccurrencesOfString("<html ", withString: "<html class=\"\(classes)\"")
-        
         cell.loadHTMLString(html, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
         
         return cell

@@ -16,10 +16,11 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     private var displayWidth: CGFloat?
     private var displayHeight: CGFloat?
     private let SEARCHBAR_HEIGHT: CGFloat = 44
-    private var matches:[NSTextCheckingResult]?
     private var adjustedMatches:[NSTextCheckingResult] = []
     private var matchesStrArray:[String] = []
     private var bodyHtml:String?
+    private var bodyHtmlArray:[String] = []
+    private var pageMappedArray:[Int] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -49,57 +50,81 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
         print("searchtextは \(search!.text!)")
         self.search?.userInteractionEnabled = false  //これしないと、以下全ての実行が2回呼ばれてしまう
         
-    //本1冊検索モードなら
-        //最初に本1冊内の全章をCoreDataに保存しておく
-        //アプリ起動後に保存？非同期？
-        /*BookStr エンティティのAttributesは
-        bookId(String)
-        chap1(String)  第1章のhtml
-        chap2(String)
-         ...
-        chap16(String)*/
-        
-        //BookStr.swift、FRBookStr.swiftを作成？
-        
-        
-        
-        //そこから検索文字列でCoreDataを検索
-        //第1章から順に、章単位で検索をしていく
-        //とりあえず途中10件まで表示?
-        
-        //この場合、そもそもCoreDataは不要？？
-        
-        
+        self.showSearchModeAlert()
+    }
     
+    func searchInThisBook(){
+        let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"  //それぞれの前後の文字列も確保?
+        print("patternは \(pattern)")
+        //第1章から順に、章単位で検索(とりあえず途中10件まで表示?) → 結果表示
+        for(var j = 0; j < FolioReader.sharedInstance.readerCenter.totalPages; j++){
+            let indexPath = NSIndexPath(forRow: j, inSection: 0)
+            let resource = book.spine.spineReferences[indexPath.row].resource
+            let html = try? String(contentsOfFile: resource.fullHref, encoding: NSUTF8StringEncoding)
+            //let htmlBody = html!.stringByReplacingOccurrencesOfString("<?xml(.|[\n])*</head>", withString: "", options: .RegularExpressionSearch, range: nil)
+            let htmlBodyResult = RegExp("<body>(.|[\n])*</body>").matches(html!)
+            let htmlBody = (html! as NSString).substringWithRange(htmlBodyResult![0].range)
+            print("htmlBodyは\(htmlBody)")
+            self.bodyHtmlArray.append(htmlBody)
+    
+            var matches =  RegExp(pattern).matches(htmlBody)
+            print("matchesは\(matches)")
+            if(matches != nil){
+                let matchCount = matches!.count
+                for i in 0 ..< matchCount {
+                    let matchHtmlStr = (htmlBody as NSString).substringWithRange(matches![i].range)
+                    let matchStr = self.stripTagsFromStr(matchHtmlStr)
+                    print("タグを抜いたmatchStrは\(matchStr)")
+                    if matchStr.containsString("\(search!.text!)") {  //大文字、小文字を別々に評価
+                        //tableに表示
+                        print("firstは \(self.adjustedMatches.first)")
+                        if(self.adjustedMatches.first == nil){
+                            self.adjustedMatches.append(matches![i])  //insertはダメ
+                        }else{
+                            self.adjustedMatches.append(matches![i])
+                        }
+                        self.matchesStrArray.append( matchStr )
+                        self.pageMappedArray.append( j )  //これで各cellが何章のものか分かるようにする
+                    }else{
+                        //tableに表示させない
+                    }
+                }
+            }else{
+                
+            }
+        }
         
-
-    //章検索モードなら
-        //現在の章だけを検索する
-        
+        if(self.matchesStrArray.count > 0){
+            if(self.table == nil){
+                self.addTable()
+            }
+        }else{
+            self.showSearchAlert()
+        }
+    }
+    
+    func searchInThisChapter(){
+        let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"
+        print("patternは \(pattern)")
         //機能追加: 何度も検索を可能にする、キーボードを隠せて下の方の検索結果も見えるように
         //機能追加:検索後に画面タップでハイライト消すのは uiviewを一時生成してbegantouchで実行？
+        var matches =  RegExp(pattern).matches(self.bodyHtml!)
+        print("matchesは\(matches)")
         
-        let pattern = "([a-zA-Z0-9]|.){0,10}\(search!.text!)([a-zA-Z0-9]|.){0,10}"  //それぞれの前後の文字列も確保?
-        //"\(search!.text!)"
-        print("patternは \(pattern)")
-      
-        self.matches =  RegExp(pattern).matches(self.bodyHtml!)  
-        print("matchesは\(self.matches)")
-        
-        if(self.matches != nil){
-            let matchCount = self.matches!.count
+        if(matches != nil){
+            let matchCount = matches!.count
             for i in 0 ..< matchCount {
                 
-                let matchHtmlStr = (self.bodyHtml! as NSString).substringWithRange(self.matches![i].range)
+                let matchHtmlStr = (self.bodyHtml! as NSString).substringWithRange(matches![i].range)
                 let matchStr = self.stripTagsFromStr(matchHtmlStr)
                 print("タグを抜いたmatchStrは\(matchStr)")
                 if matchStr.containsString("\(search!.text!)") {  //大文字、小文字を別々に評価
                     //tableに表示
                     print("firstは \(self.adjustedMatches.first)")
                     if(self.adjustedMatches.first == nil){
-                       self.adjustedMatches.append(self.matches![i])  //insertはダメ
+                       self.adjustedMatches.append(matches![i])  //insertはダメ
                     }else{
-                       self.adjustedMatches.append(self.matches![i])
+                       self.adjustedMatches.append(matches![i])
                     }
                     self.matchesStrArray.append( matchStr )
                 }else{
@@ -116,7 +141,7 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
                 self.showSearchAlert()
             }
         
-            //機能追加:下にリロードしたら動的に列を追加したい(最初は10件まで表示?)
+            //機能追加:下にリロードしたら動的に列を追加(最初は10件まで表示?)
             /*self.table!.beginUpdates()
             self.matches = searchResult
             var indexPathArray:[NSIndexPath]=[]
@@ -137,11 +162,32 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
         let searchAlert = UIAlertView()
         searchAlert.delegate = self
         searchAlert.title = ""
-        searchAlert.message = "No Result"
+        searchAlert.message = "No Search Result"
         searchAlert.addButtonWithTitle("OK")
         searchAlert.show()
     }
 
+    func showSearchModeAlert(){
+        let searchModeAlert = UIAlertView()
+        searchModeAlert.delegate = self
+        searchModeAlert.title = ""
+        searchModeAlert.message = "Search"
+        searchModeAlert.addButtonWithTitle("In This Book")
+        searchModeAlert.addButtonWithTitle("In This Chapter")
+        searchModeAlert.tag = 1
+        searchModeAlert.show()
+    }
+    
+    func alertView(alertView: UIAlertView, clickedButtonAtIndex buttonIndex: Int) {
+        if(alertView.tag == 1){
+            if (buttonIndex == 0) {
+                self.searchInThisBook()
+            } else {
+                self.searchInThisChapter()
+            }
+        }
+    }
+    
     func stripTagsFromStr(var htmlStr:String)-> String {
         print("最初のhtmlStrは\(htmlStr)")
         //正規表現を使うとシンプルにできる
@@ -240,50 +286,81 @@ class FolioReaderSearchView: UIViewController, UITableViewDataSource, UITableVie
     
     func tableView(table: UITableView, didSelectRowAtIndexPath indexPath:NSIndexPath) {
         print("tappした \(indexPath)")
-        
-        let item = self.adjustedMatches[indexPath.row]
-        //item.rangeを調整し 検索文字列の部分だけにする
-        //まずitemの中での検索文字列の位置を取得
-        let itemStr = (self.bodyHtml! as NSString).substringWithRange(item.range)
-        let searchTextLocation = (itemStr as NSString).rangeOfString(search!.text!).location
-        //その位置の分だけずらす
-        let adjustedRange = NSMakeRange(item.range.location + searchTextLocation, search!.text!.characters.count)
-        
-        self.dismissViewControllerAnimated(true, completion: nil)
-        
-        //searchタグの挿入操作(全てJS側でやってもうまくいきそう)
-        //検索文字列の部分だけにハイライトタグを追加する
-        //let content = (self.bodyHtml! as NSString).substringWithRange(adjustedRange)
-        let searchTagId = "search"
-        var bodyHtmls = (self.bodyHtml! as NSString)
-        let style = HighlightStyle.classForStyle(2)  //青色
-        let tag = "<search id=\"\(searchTagId)\" class=\"\(style)\">\(search!.text!)</search>"
-        
-        //これを使うと同一文字があると個別に移動できない
-        //let range: NSRange = adjustedRange   //bodyHtmls.rangeOfString(content, options: .LiteralSearch)
-        if adjustedRange.location != NSNotFound {
+        //In This Book の場合
+        if(self.pageMappedArray.count > 0){
+            let item = self.adjustedMatches[indexPath.row]
+            //item.rangeを調整し 検索文字列の部分だけにする
+            //まずitemの中での検索文字列の位置を取得
+            let thePage = self.pageMappedArray[indexPath.row]    //thePageは0~
+            var bodyHtmls = (self.bodyHtmlArray[thePage] as NSString)
+            let itemStr = bodyHtmls.substringWithRange(item.range)
+            let searchTextLocation = (itemStr as NSString).rangeOfString(search!.text!).location
+            //その位置の分だけずらす
+            let adjustedRange = NSMakeRange(item.range.location + searchTextLocation, search!.text!.characters.count)
             
-            bodyHtmls = bodyHtmls.stringByReplacingCharactersInRange(adjustedRange, withString: tag)
-            let currentPageNum = FolioReader.sharedInstance.readerCenter.currentPage.pageNumber
-            let resource = book.spine.spineReferences[currentPageNum-1].resource
-            FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 1  //didfinishLoad時に行移動させるため
-            FolioReader.sharedInstance.readerCenter.currentPage.webView.alpha = 0
-            print("bodyHtmlsは\(bodyHtmls)")
+            self.dismissViewControllerAnimated(true, completion: nil)
             
-            var html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()
+            //searchタグの挿入操作(全てJS側でやってもうまくいきそう)
+            //検索文字列の部分だけにハイライトタグを追加する
+            //let content = (self.bodyHtml! as NSString).substringWithRange(adjustedRange)
+            let searchTagId = "search"
+            let style = HighlightStyle.classForStyle(2)  //青色
+            let tag = "<search id=\"\(searchTagId)\" class=\"\(style)\">\(search!.text!)</search>"
             
-            // <body>[.\n]<\/body>
-            //  ((?:.(?!<body[^>]*>))+.<body[^>]*>)|(</body\>.+)
-            // /<body[^>]*>((.|[\n\r])*)<\/body>/im
-            // (?i)<body>\\s*</body>
-        
-            html! = html!.stringByReplacingOccurrencesOfString("<body>(.|[\n])*</body>", withString: bodyHtmls as String, options: .RegularExpressionSearch, range: nil)
-            print("body入れ替え後のhtmlは\(html)")
-            //それを読み込む
-            FolioReader.sharedInstance.readerCenter.currentPage.webView.loadHTMLString(html! as String, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
-        }
-        else {
-            print("item range not found")
+            if adjustedRange.location != NSNotFound {
+                bodyHtmls = bodyHtmls.stringByReplacingCharactersInRange(adjustedRange, withString: tag)
+                let resource = book.spine.spineReferences[thePage].resource
+                FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 1  //didfinishLoad時に行移動させるため
+                FolioReader.sharedInstance.readerCenter.currentPage.webView.alpha = 0
+                
+                
+                
+                if(FolioReader.sharedInstance.readerCenter.currentPage != thePage + 1){
+                    FolioReader.sharedInstance.readerCenter.changePageWith(page: thePage + 1, animated: false, completion: { () -> Void in
+                        var html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()
+                        html! = html!.stringByReplacingOccurrencesOfString("<body>(.|[\n])*</body>", withString: bodyHtmls as String, options: .RegularExpressionSearch, range: nil)
+                        print("body入れ替え後のhtmlは\(html)")
+                        //それ読み込む(これはuiwebviewのメソッド使用)
+                        FolioReader.sharedInstance.readerCenter.currentPage.webView.loadHTMLString(html! as String, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
+                    })
+                }else{  //その章内なら
+                    var html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()
+                    html! = html!.stringByReplacingOccurrencesOfString("<body>(.|[\n])*</body>", withString: bodyHtmls as String, options: .RegularExpressionSearch, range: nil)
+                    
+                    FolioReader.sharedInstance.readerCenter.currentPage.webView.loadHTMLString(html! as String, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
+                }
+            } else {
+                print("item range not found")
+            }
+        //In This Chapter の場合
+        }else{
+            let item = self.adjustedMatches[indexPath.row]
+            let itemStr = (self.bodyHtml! as NSString).substringWithRange(item.range)
+            let searchTextLocation = (itemStr as NSString).rangeOfString(search!.text!).location
+            let adjustedRange = NSMakeRange(item.range.location + searchTextLocation, search!.text!.characters.count)
+            
+            self.dismissViewControllerAnimated(true, completion: nil)
+   
+            let searchTagId = "search"
+            var bodyHtmls = (self.bodyHtml! as NSString)
+            let style = HighlightStyle.classForStyle(2)
+            let tag = "<search id=\"\(searchTagId)\" class=\"\(style)\">\(search!.text!)</search>"
+            
+            if adjustedRange.location != NSNotFound {
+                bodyHtmls = bodyHtmls.stringByReplacingCharactersInRange(adjustedRange, withString: tag)
+                let currentPageNum = FolioReader.sharedInstance.readerCenter.currentPage.pageNumber
+                let resource = book.spine.spineReferences[currentPageNum-1].resource
+                FolioReader.sharedInstance.readerCenter.currentPage.webView.tag = 1
+                FolioReader.sharedInstance.readerCenter.currentPage.webView.alpha = 0
+                print("bodyHtmlsは\(bodyHtmls)")
+                
+                var html = FolioReader.sharedInstance.readerCenter.currentPage.getHTML()
+                html! = html!.stringByReplacingOccurrencesOfString("<body>(.|[\n])*</body>", withString: bodyHtmls as String, options: .RegularExpressionSearch, range: nil)
+                print("body入れ替え後のhtmlは\(html)")
+                FolioReader.sharedInstance.readerCenter.currentPage.webView.loadHTMLString(html! as String, baseURL: NSURL(fileURLWithPath: (resource.fullHref as NSString).stringByDeletingLastPathComponent))
+            } else {
+                print("item range not found")
+            }
         }
     }
 

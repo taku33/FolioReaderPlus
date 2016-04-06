@@ -90,7 +90,6 @@ class FolioReaderPage: UICollectionViewCell, UIWebViewDelegate, UIGestureRecogni
         
         // Restore highlights (except bookmark)
         let highlights = Highlight.allByBookId((kBookId as NSString).stringByDeletingPathExtension, andPage:pageNumber)
-        
         if highlights.count > 0 {
             for item in highlights {
                 
